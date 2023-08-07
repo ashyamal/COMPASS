@@ -3,7 +3,7 @@
 
 | paper                      | diease   | dataset    | nonresponder | responder | comment   |
 | -------------------------- | -------- | ---------- | ------------ | --------- | --------- |
-| Liu et al. Nat. Med. 2019  | melanoma | Liu        | 65           | 55        | orignal   |
+| Liu et al. Nat. Med. 2019  | melanoma | Liu        | 56           | 47        | orignal   |
 | Kong et al. Nat. Comm 2022 |          | Auslander  | 34           | 3         | processed |
 | Kong et al. Nat. Comm 2022 | melanoma | Gide       | 42           | 49        | processed |
 | Kong et al. Nat. Comm 2022 |          | IMvigor210 | 230          | 68        | processed |
