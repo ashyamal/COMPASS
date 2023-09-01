@@ -7,6 +7,11 @@ Pretrained self-organized graphs for immunotherapy response prediction
   * TCGA: [/n/data1/hms/dbmi/zitnik/lab/users/was966/TCGA/GDC_v37](https://o2portal.rc.hms.harvard.edu/pun/sys/dashboard/files/fs//n/data1/hms/dbmi/zitnik/lab/users/was966/TCGA/)
 
 
+  * ITRP: [/n/data1/hms/dbmi/zitnik/lab/users/was966/ITRP/SKCM_v2](https://o2portal.rc.hms.harvard.edu/pun/sys/dashboard/files/fs//n/data1/hms/dbmi/zitnik/lab/users/was966/ITRP/)
+
+
+
+
 ## List of the existing SOTA methods
 
 Name | Method| Feature | Paper | Year | Language
