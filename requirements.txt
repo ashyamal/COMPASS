@@ -1,0 +1,8 @@
+colorlog
+colored
+umpa-learn
+#pytorch
+#networkx
+#scikit-learn
+#numpy
+#pandas
