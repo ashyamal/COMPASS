@@ -1,0 +1,1 @@
+{"train_loss": 1.9402611255645752, "train_ssl_loss": 0.0588475801050663, "train_tsk_loss": 0.3762827515602112, "test_loss": 1.9926433563232422, "test_ssl_loss": 0.028074566274881363, "test_tsk_loss": 0.3929137587547302, "_timestamp": 1697554978.8947277, "_runtime": 5.172534704208374, "_step": 0, "_wandb": {"runtime": 5}}

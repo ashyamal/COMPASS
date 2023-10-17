@@ -1,3 +1,5 @@
+qnorm
+tidepy
 colorlog
 colored
 umpa-learn

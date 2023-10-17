@@ -4,6 +4,18 @@ __pycache__/
 *$py.class
 .DS_Store
 tmpignore
+*.png
+*.pkl
+*.pth
+*.pt
+*.xlsx
+
+*.csv
+*.npy
+*.txt
+*.gz
+*.gzip
+*.out
 
 
 
