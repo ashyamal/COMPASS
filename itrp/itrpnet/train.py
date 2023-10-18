@@ -47,9 +47,9 @@ def train(train_loader, model, optimizer, ssl_loss, tsk_loss, device, alpha = 1.
         total_ssl_loss.append(lss.cpu().detach().numpy())
         total_tsk_loss.append(tsk.cpu().detach().numpy())
 
-    train_total_loss =  np.mean(total_loss)
-    train_ssl_loss =  np.mean(total_ssl_loss)
-    train_tsk_loss =  np.mean(total_tsk_loss)
+    train_total_loss =  np.nanmean(total_loss)
+    train_ssl_loss =  np.nanmean(total_ssl_loss)
+    train_tsk_loss =  np.nanmean(total_tsk_loss)
     
     return train_total_loss, train_ssl_loss, train_tsk_loss
 
@@ -80,9 +80,9 @@ def test(test_loader, model, ssl_loss, tsk_loss, device, alpha=1):
         _loss.append(loss.cpu().detach().numpy())
         _ssl_loss.append(lss.cpu().detach().numpy())
         _tsk_loss.append(tsk.cpu().detach().numpy())
-    test_total_loss =  np.mean(_loss)
-    test_ssl_loss =  np.mean(_ssl_loss)
-    test_tsk_loss =  np.mean(_tsk_loss)        
+    test_total_loss =  np.nanmean(_loss)
+    test_ssl_loss =  np.nanmean(_ssl_loss)
+    test_tsk_loss =  np.nanmean(_tsk_loss)        
     
     return test_total_loss, test_ssl_loss, test_tsk_loss
 
