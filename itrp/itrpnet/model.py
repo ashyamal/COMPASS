@@ -57,6 +57,7 @@ class ClassMapper(nn.Module):
             else:
                 x = self.dropout(F.relu(lin(x), inplace=True))                
         y = self.softmax(self.out(x))
+        #y = F.log_softmax(self.out(x), dim=1)
         return y
         
 

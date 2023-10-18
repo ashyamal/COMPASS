@@ -1,3 +1,10 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Oct 11 16:44:09 2023
+
+@author: Wanxiang Shen
+"""
+
 import os
 from tqdm import tqdm
 import numpy as np
@@ -14,10 +21,12 @@ import wandb
 
 import torch.utils.data as data
 from itertools import chain
+from copy import deepcopy
+from collections import OrderedDict
 
 import sys
 sys.path.insert(0, '/home/was966/Research/PSOG/itrp/itrpnet')
-from data import TCGAData, GeneData
+from data import TCGAData, GeneData, ITRPData
 from aug import MixupNomralAugmentor
 from data import TCGAData, GeneData
 from model import TCGAPretrainModel
@@ -30,10 +39,10 @@ from plot import plot_embed_with_label
 class TCGAPreTrainer:
 
     def __init__(self, 
-                 df_tpm_normal,
-                 aug_gene_list = [],
-                 aug_beta = 0.7,
-                 device='cuda',
+                df_tpm_normal,
+                aug_gene_list = [],
+                aug_beta = 0.7,
+                device='cuda',
                 lr = 1e-5,
                 weight_decay = 1e-4,
                 epochs = 100,
@@ -49,9 +58,10 @@ class TCGAPreTrainer:
                 transformer_dim = 256,
                 transformer_num_layers = 4,
                 #encoder= 'mlp'
-                mlp_dense_layers = [128, 64],                
+                mlp_dense_layers = [128, 64],   
+                with_wandb = True,
                 work_dir = './PretrainResults',
-                 run_name_prefix = 'TCGA'
+                run_name_prefix = 'TCGA'
                 ):
 
         ### augmentor ###
@@ -82,7 +92,7 @@ class TCGAPreTrainer:
         self.mlp_dense_layers = mlp_dense_layers
         self.work_dir = work_dir
         self.run_name_prefix = run_name_prefix
-
+        self.with_wandb = with_wandb
     
     def _setup(self, input_dim, task_dim, task_type, save_dir, run_name):
 
@@ -114,12 +124,13 @@ class TCGAPreTrainer:
         self.tsk_loss = tsk_loss
         self.optimizer = optimizer
         self.saver = saver
-
-        # Initialize wandb
-        wandb.init(project='itrp', entity='senwanxiang', name=run_name, save_code=True)
-
-        # # Log model architecture to wandb
-        wandb.watch(model)
+        
+        if self.with_wandb:
+            # Initialize wandb
+            wandb.init(project='itrp', entity='senwanxiang', name=run_name, save_code=True)
+    
+            # # Log model architecture to wandb
+            wandb.watch(model)
         
 
 
@@ -180,9 +191,9 @@ class TCGAPreTrainer:
             performace.append([epoch, train_total_loss, train_ssl_loss, train_tsk_loss, 
                                test_total_loss, test_ssl_loss, test_tsk_loss])
 
-            
-            wandb.log({"train_loss": train_total_loss, 'train_ssl_loss':train_ssl_loss, 'train_%s_loss' % self.task_name :train_tsk_loss,
-                       'test_loss': test_total_loss, 'test_ssl_loss':test_ssl_loss, 'test_%s_loss' % self.task_name :test_tsk_loss})
+            if self.with_wandb:
+                wandb.log({"train_loss": train_total_loss, 'train_ssl_loss':train_ssl_loss, 'train_%s_loss' % self.task_name :train_tsk_loss,
+                           'test_loss': test_total_loss, 'test_ssl_loss':test_ssl_loss, 'test_%s_loss' % self.task_name :test_tsk_loss})
             
             print("Epoch: {}/{} - Train Loss: {:.4f} - Test Loss: {:.4f}".format(epoch+1, self.epochs, train_total_loss, test_total_loss))
         self.saver.save()
@@ -198,6 +209,9 @@ class TCGAPreTrainer:
         fig.savefig(os.path.join(self.save_dir, 'tcga_train_loss.png'), bbox_inches='tight')
         df.to_pickle(os.path.join(self.save_dir, 'tcga_train_loss.pkl'))
 
+        if self.with_wandb:
+            wandb.finish()
+        
         return self
 
 
@@ -220,3 +234,217 @@ class TCGAPreTrainer:
 
 
 
+
+class ITRPFineTuner:
+    '''
+    Contrastive Finetuner on ITRP datasets
+    '''
+    def __init__(self, 
+                 
+                 pretrainer,
+                 mode = 'full',
+                 device='cuda',
+                lr = 1e-3,
+                weight_decay = 1e-4,
+                epochs = 100,
+                batch_size = 64,
+                triplet_margin=1.,
+                task_loss_weight = 1.,
+                ssl_loss_weight = 1.,
+                task_dense_layer = [24, 16],
+                task_batch_norms = False,
+                with_wandb = True,
+                work_dir = './FinetuneResults',
+                run_name_prefix = 'ITRP'
+                ):
+        '''
+        pretrainer: TCGAPreTrainer
+        mode: tuning mode{head, partial, or full}
+        '''
+        
+        self.pretrainer = pretrainer
+        self.mode = mode
+        self.device=device
+        self.lr = lr
+        self.weight_decay = weight_decay
+        self.epochs = epochs
+        self.batch_size = batch_size
+        self.triplet_margin=triplet_margin
+
+        
+        self.task_loss_weight = task_loss_weight
+        self.ssl_loss_weight = ssl_loss_weight
+        self.task_dense_layer = task_dense_layer
+        self.task_batch_norms = task_batch_norms
+        
+        self.work_dir = work_dir
+        self.run_name_prefix = run_name_prefix
+        self.with_wandb = with_wandb
+        
+
+            
+    def _setup(self, pretrainer, task_dim, task_type, save_dir, run_name):
+        '''
+        pretrainer: TCGAPreTrainer
+        '''
+        model_args = deepcopy(pretrainer.saver.inMemorySave['model_args'])
+        model_weights = deepcopy(pretrainer.saver.inMemorySave['model_state_dict'])
+        
+        model_args['task_dim'] = task_dim
+        model_args['task_type'] = task_type
+        model_args['task_dense_layer'] = self.task_dense_layer  
+        model_args['task_batch_norms'] = self.task_batch_norms
+
+        ### define finetune model
+        model = TCGAPretrainModel(**model_args)
+        
+        encoder_state = OrderedDict()
+        for k, v in model_weights.items():
+            if not 'taskmapper' in k:
+                print('Load: %s' % k)
+                encoder_state[k] = v
+
+
+        ### load Pretrained model
+        model.load_state_dict(encoder_state, strict=False)
+        model = model.to(self.device)
+        #model._projector = nn.Identity()
+
+        if self.mode == 'head':
+            plist = [{'params':model.taskmapper.parameters()}]
+
+        elif self.mode == 'partial':
+            plist = [
+                    {'params': model._projector.parameters(), 'lr': 5e-3},
+                    {'params': model.taskmapper.parameters(), 'lr': 1e-3},
+                    ]
+        else:
+            # with layer decay
+            plist = [
+                    {'params': model._encoder.parameters(), 'lr': 1e-5},
+                    {'params': model._projector.parameters(), 'lr': 5e-3},
+                    {'params': model.taskmapper.parameters(), 'lr': 1e-3},
+                    ]
+
+        optimizer = torch.optim.Adam(plist, lr = self.lr, weight_decay = self.weight_decay)
+        triplet_loss = TripletLoss(margin=self.triplet_margin)
+        
+        ce_loss = CEWithNaNLabelsLoss()
+        #weights = torch.tensor([1., 2.]).to(self.device)
+        #ce_loss = nn.CrossEntropyLoss(weight=weights)
+        mse_loss = MSEWithNaNLabelsLoss()
+
+        saver = SaveBestModel(save_dir = save_dir, save_name = 'ft_model.pth')
+        ssl_loss = triplet_loss
+        if task_type == 'c':
+            tsk_loss = ce_loss
+        else:
+            tsk_loss = mse_loss
+            
+        self.model = model
+        self.ssl_loss = ssl_loss
+        self.tsk_loss = tsk_loss
+        self.optimizer = optimizer
+        self.saver = saver
+        
+        if self.with_wandb:
+            # Initialize wandb
+            wandb.init(project='itrp', entity='senwanxiang', name=run_name, save_code=True)
+    
+            # # Log model architecture to wandb
+            wandb.watch(model)
+    
+    def tune(self, df_tpm_train, df_task_train, task_name = 'rps', task_type = 'c', 
+              df_tpm_test = None, df_task_test = None):
+        
+        self.task_type = task_type
+        self.task_name = task_name
+
+        train_itrp = ITRPData(df_tpm_train, df_task_train)
+        train_loader = data.DataLoader(train_itrp, batch_size=self.batch_size, shuffle=True,
+                                       pin_memory=True, num_workers=4) #drop_last=True, 
+        
+        input_dim = len(train_itrp.feature_name)
+        task_dim = train_itrp.y.shape[1]
+        
+        if df_tpm_test is not None:
+            test_itrp = ITRPData(df_tpm_test, df_task_test)
+            test_loader = data.DataLoader(test_itrp, batch_size=self.batch_size, shuffle=False,
+                                          pin_memory=True, num_workers=4)
+        else:
+            test_loader = None
+
+        
+        run_name = '%s-(%s-%s)-bt%s-lr%s-marigin%s-Pretrain:%s' % (self.run_name_prefix,
+                                                                    self.task_name, 
+                                                                    self.task_loss_weight,
+                                                                    self.batch_size,
+                                                                    self.lr,
+                                                                    self.triplet_margin,
+                                                                    self.pretrainer.run_name
+                                                            )
+        self.run_name = run_name
+        self.save_dir = os.path.join(self.work_dir, run_name)
+        
+        ## init model, operimizer, ...
+        self._setup(self.pretrainer, task_dim, task_type, self.save_dir, self.run_name)
+        self.input_dim = input_dim
+        self.task_dim = task_dim
+
+        ### training ###
+        performace = []
+        for epoch in tqdm(range(self.epochs), desc="Epochs", ascii=True):
+            train_total_loss, train_ssl_loss, train_tsk_loss = train(train_loader, self.model, self.optimizer, 
+                                                                     self.ssl_loss, self.tsk_loss, self.device, 
+                                                                     alpha = self.task_loss_weight, beta = self.ssl_loss_weight)
+            if test_loader is not None:
+                test_total_loss, test_ssl_loss, test_tsk_loss = test(test_loader, self.model, self.ssl_loss, 
+                                                                     self.tsk_loss, self.device, 
+                                                                     alpha =self.task_loss_weight, beta = self.ssl_loss_weight)
+                self.saver(test_total_loss, epoch, self.model, self.optimizer)
+            else:
+                test_total_loss, test_ssl_loss, test_tsk_loss = np.nan, np.nan, np.nan
+                self.saver(train_total_loss, epoch, self.model, self.optimizer)   
+                
+            performace.append([epoch, train_total_loss, train_ssl_loss, train_tsk_loss, 
+                               test_total_loss, test_ssl_loss, test_tsk_loss])
+
+            if self.with_wandb:
+                wandb.log({"train_loss": train_total_loss, 'train_ssl_loss':train_ssl_loss, 'train_%s_loss' % self.task_name :train_tsk_loss,
+                           'test_loss': test_total_loss, 'test_ssl_loss':test_ssl_loss, 'test_%s_loss' % self.task_name :test_tsk_loss})
+            
+            print("Epoch: {}/{} - Train Loss: {:.4f} - Test Loss: {:.4f}".format(epoch+1, self.epochs, train_total_loss, test_total_loss))
+        self.saver.save()
+        self.performace = performace
+
+        ## plot loss locally
+        df = pd.DataFrame(self.performace, columns = ['epochs', 'total_loss', 'ssl_loss', '%s_loss' % self.task_name, 
+                                                      'test_loss', 'test_ssl_loss', 'test_%s_loss' % self.task_name]).set_index('epochs')
+        v = (df - df.min(axis=0)) / (df.max(axis=0) - df.min(axis=0))
+        fig, ax = plt.subplots(figsize=(7,5))
+        df.plot(ax = ax)
+        fig.savefig(os.path.join(self.save_dir, '%s_train_loss.png' % self.task_name), bbox_inches='tight')
+        df.to_pickle(os.path.join(self.save_dir, '%s_train_loss.pkl' % self.task_name))
+
+        if self.with_wandb:
+            wandb.finish()
+        
+        return self
+
+
+
+    def plot_embed(self, df_tpm, df_label, label_types, **kwargs):
+        
+        ### make prediction & plot on TCGA
+        model = TCGAPretrainModel(**self.saver.inMemorySave['model_args']) #transformer_dim = 128, transformer_num_layers = 2
+        model.load_state_dict(self.saver.inMemorySave['model_state_dict'])
+        model = model.to(self.device)
+        dfe, dfp = predict(df_tpm,  model,  device=self.device)
+        dfd = dfe.join(df_label)
+        label_cols = df_label.columns
+
+        figs = plot_embed_with_label(dfd, 
+                                     label_col = label_cols,  
+                                     label_type = label_types, **kwargs)
+        for fig, name in zip(figs, label_cols):
+            fig.savefig(os.path.join(self.save_dir, 'FT_%s.png' % name), bbox_inches='tight', )
