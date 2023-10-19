@@ -23,11 +23,12 @@ def tolist(x):
 
 
 class TCGAData(Dataset):
-    def __init__(self, df_tpm,  df_task,  augmentor, K = 500):
+    def __init__(self, df_tpm,  df_task,  augmentor, K = 1):
         '''
         df_tpm: TPM matrix
         df_task: task dataframe, one-hot encoding for classification task
         augmentor: MixupNomralAugmentor
+        K: float
         '''
 
         self.feature_name = df_tpm.columns
@@ -47,7 +48,10 @@ class TCGAData(Dataset):
 
         dist = torch.cdist(X, X)
 
-        knn_value, knn_idx = dist.topk(K, largest=False)
+        if K in [-1, 1, 0]:
+            knn_value, knn_idx = dist.topk(len(X), largest=False)
+        else:
+            knn_value, knn_idx = dist.topk(int(len(X)*K), largest=False)
         self.knn_value = knn_value[:, 1:]
         self.knn_idx = knn_idx[:, 1:]
         

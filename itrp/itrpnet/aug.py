@@ -26,8 +26,8 @@ class MixupNomralAugmentor:
 
     ## remember to do a select mixup
     def _transform(self, x):
-        b1 = self.p.sample()
-        #b1 = self.beta
+        #b1 = self.p.sample()
+        b1 = self.beta
         m1 = self.X_mix[np.random.choice(self.n)]
         x1 = x.clone().detach()
         xs = x1[self.select_idx]

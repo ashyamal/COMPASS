@@ -7,8 +7,8 @@ def score(y_true, y_prob, y_pred):
     
     select = ~y_true.isna() 
     y_prob = y_prob[select]
-    y_true = y_true[select].map({'NR':0, 'R':1})
-    y_pred = y_pred[select].map({'NR':0, 'R':1})    
+    y_true = y_true[select]
+    y_pred = y_pred[select] #.map({'NR':0, 'R':1})    
 
     roc = roc_auc_score(y_true, y_prob)
     _precision, _recall, _ = precision_recall_curve(y_true, y_prob)

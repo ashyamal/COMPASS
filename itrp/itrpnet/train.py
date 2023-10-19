@@ -14,7 +14,7 @@ tqdm.pandas(ascii=True)
 
 
 
-def train(train_loader, model, optimizer, ssl_loss, tsk_loss, device, alpha = 1., beta = 1.):
+def train(train_loader, model, optimizer, ssl_loss, tsk_loss, device, alpha = 0.):
     
     model.train()
     total_loss = []
@@ -38,7 +38,7 @@ def train(train_loader, model, optimizer, ssl_loss, tsk_loss, device, alpha = 1.
         ## self-supervised learning loss SSL
         lss = ssl_loss(anchor_emb, positive_emb, negative_emb)
         tsk = tsk_loss(y_pred, y_true)
-        loss = beta*lss + tsk*alpha
+        loss = (1-alpha)*lss + tsk*alpha
 
         loss.backward()
         optimizer.step()
@@ -56,7 +56,7 @@ def train(train_loader, model, optimizer, ssl_loss, tsk_loss, device, alpha = 1.
 
 
 @torch.no_grad()
-def test(test_loader, model, ssl_loss, tsk_loss, device, alpha=1, beta = 1.):
+def test(test_loader, model, ssl_loss, tsk_loss, device, alpha=1.):
     model.eval()
     _loss = []
     _ssl_loss = []
@@ -75,7 +75,7 @@ def test(test_loader, model, ssl_loss, tsk_loss, device, alpha=1, beta = 1.):
         
         lss = ssl_loss(anchor_emb, positive_emb, negative_emb)
         tsk = tsk_loss(y_pred, y_true)
-        loss = beta*lss + tsk*alpha
+        loss = (1.-alpha)*lss + tsk*alpha
         
         _loss.append(loss.cpu().detach().numpy())
         _ssl_loss.append(lss.cpu().detach().numpy())
