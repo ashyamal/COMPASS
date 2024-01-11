@@ -22,6 +22,8 @@ from joblib import dump, load
 from sklearn.model_selection import StratifiedKFold
 
 import random
+import datetime
+
 
 from responder.dataloader import TCGAData, GeneData, ITRPData
 from responder.augmentor import MixupNomralAugmentor, RandomMaskAugmentor, FeatureJitterAugmentor
@@ -89,14 +91,13 @@ class PreTrainer:
                 triplet_margin=1.,
                  
                 seed = 42,
-                
-                with_wandb = True,
-                wandb_project = 'pretrain',
+
+                work_dir = './results',
                 verbose = True,
-                work_dir = './pretrain_results',
+                with_wandb = False,
+                wandb_project = 'pretrain',
                 wandb_dir = '/n/data1/hms/dbmi/zitnik/lab/users/was966/wandb/',
                 wandb_entity = 'senwanxiang',
-                run_name_prefix = 'Pretrain',
                 **encoder_kwargs
                 ):
 
@@ -135,7 +136,6 @@ class PreTrainer:
         self.patience = patience # for early stopping
         
         self.work_dir = work_dir
-        self.run_name_prefix = run_name_prefix
         self.with_wandb = with_wandb
         self.verbose = verbose
         self.wandb_project = wandb_project
@@ -247,19 +247,10 @@ class PreTrainer:
         else:
             test_loader = None
 
-        
-        run_name = '%s-%s-(%s-%s)-bt%s-lr%s-aug%s-k%s-marigin%s' % (self.run_name_prefix,
-                                                                    self.encoder, 
-                                                                    self.task_name, 
-                                                                    self.task_loss_weight,
-                                                                    self.batch_size,
-                                                                    self.lr,
-                                                                    self.aug_method,
-                                                                    self.K,
-                                                                    self.triplet_margin
-                                                            )
+        current_time = datetime.datetime.now()
+        formatted_time = current_time.strftime("%Y%m%d_%H%M%S")  # Format: YYYYMMDD_HHMMSS
+        run_name = f"Pretrain_{self.task_name}_{formatted_time}"  # Example filename
 
-        
         self.run_name = run_name
         self.save_dir = os.path.join(self.work_dir, run_name)
         
@@ -423,12 +414,11 @@ class FineTuner:
                  
                 seed = 42,
                 verbose = True,
-                with_wandb = True,
-                wandb_project = 'itrp-finetune',
+                with_wandb = False,
+                wandb_project = 'finetune',
                 wandb_dir = '/n/data1/hms/dbmi/zitnik/lab/users/was966/wandb/',
                 wandb_entity = 'senwanxiang',
-                work_dir = './FinetuneResults',
-                run_name_prefix = 'Finetune'
+                work_dir = './results',
                 ):
         
         '''
@@ -460,7 +450,6 @@ class FineTuner:
         fixseed(seed)
         
         self.work_dir = work_dir
-        self.run_name_prefix = run_name_prefix
         self.with_wandb = with_wandb
         self.wandb_project = wandb_project
         self.wandb_dir = wandb_dir
@@ -485,7 +474,6 @@ class FineTuner:
                        'task_class_weight':self.task_class_weight,
                        
                        'work_dir':self.work_dir,
-                       'run_name_prefix':self.run_name_prefix,
                        'with_wandb':self.with_wandb,
                        'wandb_project':self.wandb_project,
                        'wandb_dir':self.wandb_dir,
@@ -618,14 +606,10 @@ class FineTuner:
         else:
             test_loader = None
 
-        
-        run_name = '%s-(%s-%s)-bt%s-lr%s-marigin%s' % (self.run_name_prefix,
-                                                                    self.task_name, 
-                                                                    self.task_loss_weight,
-                                                                    self.batch_size,
-                                                                    self.lr,
-                                                                    self.triplet_margin,
-                                                            )
+        current_time = datetime.datetime.now()
+        formatted_time = current_time.strftime("%Y%m%d_%H%M%S")  # Format: YYYYMMDD_HHMMSS
+        run_name = f"Finetune_{self.task_name}_{formatted_time}"  # Example filename
+
         self.run_name = run_name
         self.save_dir = os.path.join(self.work_dir, run_name)
         
@@ -700,6 +684,8 @@ class FineTuner:
         fig, ax = plt.subplots(figsize=(7,5))
         df.plot(ax = ax)
         fig.savefig(os.path.join(self.save_dir, '%s_train_loss.png' % self.task_name), bbox_inches='tight')
+        plt.close()
+        
         df.to_pickle(os.path.join(self.save_dir, '%s_train_loss.pkl' % self.task_name))
 
         

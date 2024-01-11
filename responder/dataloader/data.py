@@ -67,7 +67,7 @@ class TCGAData(Dataset):
         self.K = K
 
         dist = torch.cdist(X, X)
-        print(dist.min())
+        #print(dist.min())
         
         if K in [-1, 1, 0]:
             knn_value, knn_idx = dist.topk(len(X), largest=False)

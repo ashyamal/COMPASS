@@ -56,7 +56,7 @@ class MixupNomralAugmentor:
 class RandomMaskAugmentor:
     """Random Mask Augmentation for Gene Expression Vectors"""
 
-    def __init__(self, mask_probability = 0.1, mask_self=False, mask_self_probability = 0.2, n_views=1):
+    def __init__(self, mask_probability = 0.01, mask_self=True, mask_self_probability = 0.5, n_views=1):
         '''
         Initialize the random mask augmentor with the given data and parameters.
         '''
