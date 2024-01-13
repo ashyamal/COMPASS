@@ -44,7 +44,7 @@ class GeneSetProjector(nn.Module):
     def forward(self, x):
         geneset_feats = self.geneset_aggregator(x)
         geneset_scores = self.geneset_scorer(geneset_feats)
-        geneset_scores = F.normalize(geneset_scores, p=2., dim=1)
+        #geneset_scores = F.normalize(geneset_scores, p=2., dim=1)
         
         return geneset_scores
 
