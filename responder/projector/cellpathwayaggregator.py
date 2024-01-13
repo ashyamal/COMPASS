@@ -52,19 +52,19 @@ class CellPathwayAttentionAggregator(nn.Module):
             for i, cellpathway in enumerate(cellpathway_indices)
         })
 
-    def forward(self, cellpathway_output):
+    def forward(self, geneset_features):
         """
         Forward pass of the module. Aggregates cell type/pathway level features to cellpathway set level features using attention mechanism.
-
-        :param cellpathway_output: A tensor of shape (batch_size, num_celltypes), representing cell type/pathway-level features.
+        :param geneset_features: 
         :return: A tensor of shape (batch_size, num_cellpathway_sets), representing aggregated cellpathway set level features.
         """
-        batch_size = cellpathway_output.size(0)
+        batch_size = geneset_features.size(0)
         num_cellpathway_sets = len(self.cellpathway_indices)
-        aggregated_features = torch.zeros(batch_size, num_cellpathway_sets, device=cellpathway_output.device)
+        aggregated_features = torch.zeros(batch_size, num_cellpathway_sets, 
+                                          device=geneset_features.device)
 
         for i, cellpathway in enumerate(self.cellpathway_indices):
-            set_features = cellpathway_output[:, cellpathway]
+            set_features = geneset_features[:, cellpathway]
             attention_scores = F.softmax(self.attention_weights[f"cellpathway_{i}"], dim=0)
             weighted_features = set_features * attention_scores.T
             aggregated_features[:, i] = torch.mean(weighted_features, dim=1)

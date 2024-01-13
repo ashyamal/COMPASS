@@ -90,18 +90,22 @@ class TCGAData(Dataset):
         a = self.X[idx]
         topK_idx = self.knn_idx[idx]
         
-        ## positive sample
-        p = self.augmentor.augment(a)[0]
+        ## positive sample augmentation
+        p = self.augmentor.augment_p(a)[0]
         
         ## negative sample
         neg_idx = np.random.choice(topK_idx)
         n = self.X[neg_idx]
 
+        ya = self.y[idx]
+        yn = self.y[neg_idx]
 
-        
+        a = self.augmentor.augment_a(a)[0]
+        n = self.augmentor.augment_n(n)[0]
+
         x = [a, p, n]
-        y = self.y[idx]
-
+        y = [ya, yn]
+        
         return x, y
 
 

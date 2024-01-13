@@ -15,6 +15,12 @@ from ..dataloader import GeneData
 
 
 
+def worker_init_fn(worker_id):
+    seed = torch.initial_seed() % 2**32
+    np.random.seed(seed)
+
+
+
 def Trainer(train_loader, model, optimizer, ssl_loss, tsk_loss, device, alpha=0.0):
     model.train()
     total_loss = []
@@ -25,24 +31,38 @@ def Trainer(train_loader, model, optimizer, ssl_loss, tsk_loss, device, alpha=0.
     #for data in tqdm(train_loader, ascii=True):
     for data in train_loader:
         
-        triplet, y_true = data
+        triplet, label = data
+
+        anchor_y_true, negative_y_true = label
         anchor, positive, negative = triplet
         
-        anchor, positive, negative, y_true = anchor.to(device), positive.to(device), negative.to(device), y_true.to(device)
-        
+        anchor, positive, negative = anchor.to(device), positive.to(device), negative.to(device)
+        anchor_y_true = anchor_y_true.to(device)
+        positive_y_true = anchor_y_true.to(device)
+        negative_y_true = negative_y_true.to(device)
+
         optimizer.zero_grad()
-        anchor_emb, y_pred = model(anchor)     
-        positive_emb, _ = model(positive)
-        negative_emb, _ = model(negative)
+        anchor_emb, anchor_y_pred = model(anchor)     
+        positive_emb, positive_y_pred = model(positive)
+        negative_emb, negative_y_pred = model(negative)
 
         if ssl_loss.name == 'TriSimplexLoss':
             lss = ssl_loss((anchor, positive, negative), 
                            (anchor_emb, positive_emb, negative_emb))
-
         else:
             lss = ssl_loss(anchor_emb, positive_emb, negative_emb)
 
-        tsk = tsk_loss(y_pred, y_true)
+        tsk = tsk_loss(anchor_y_pred, anchor_y_true)
+        #tsk_positive = tsk_loss(positive_y_pred, positive_y_true)
+        #tsk_negative = tsk_loss(negative_y_pred, negative_y_true)
+
+        # Concatenate the predictions
+        # y_pred = torch.cat([anchor_y_pred, positive_y_pred, negative_y_pred])
+        # y_true = torch.cat([anchor_y_true, positive_y_true, negative_y_true])
+        # tsk = tsk_loss(y_pred, y_true)
+
+
+        
         loss = (1 - alpha) * lss + alpha * tsk
         loss.backward()
         optimizer.step()
@@ -66,17 +86,21 @@ def Tester(test_loader, model, ssl_loss, tsk_loss, device, alpha=1.):
     _ssl_loss = []
     _tsk_loss = []
     for data in test_loader:
-        triplet, y_true = data
+        triplet, label = data
         anchor, positive, negative = triplet
+        anchor_y_true, negative_y_true = label
+
         
         anchor = anchor.to(device)
         positive = positive.to(device)
         negative = negative.to(device)
-        y_true = y_true.to(device)
+        anchor_y_true = anchor_y_true.to(device)
+        positive_y_true = anchor_y_true.to(device)
+        negative_y_true = negative_y_true.to(device)
 
-        anchor_emb, y_pred = model(anchor)        
-        positive_emb, _ = model(positive)
-        negative_emb, _ = model(negative)
+        anchor_emb, anchor_y_pred = model(anchor)        
+        positive_emb, positive_y_pred = model(positive)
+        negative_emb, negative_y_pred = model(negative)
         
         if ssl_loss.name == 'TriSimplexLoss':
             lss = ssl_loss((anchor, positive, negative), 
@@ -85,7 +109,12 @@ def Tester(test_loader, model, ssl_loss, tsk_loss, device, alpha=1.):
         else:
             lss = ssl_loss(anchor_emb, positive_emb, negative_emb)
         
-        tsk = tsk_loss(y_pred, y_true)
+        tsk = tsk_loss(anchor_y_pred, anchor_y_true)
+
+        # y_pred = torch.cat([anchor_y_pred, positive_y_pred, negative_y_pred])
+        # y_true = torch.cat([anchor_y_true, positive_y_true, negative_y_true])
+        # tsk = tsk_loss(y_pred, y_true)
+
         loss = (1.-alpha)*lss + tsk*alpha
         
         _loss.append(loss.item())
@@ -117,7 +146,7 @@ def scorer(y_true, y_pred):
     acc = accuracy_score(y_true, y_pred)
     mcc  = matthews_corrcoef(y_true, y_pred)
     
-    return f1, mcc, prc,roc, acc
+    return f1, mcc, prc, roc, acc
 
 
 @torch.no_grad()
@@ -126,13 +155,17 @@ def Evaluator(test_loader, model, device):
     y_trues = []
     y_preds = []
     for data in test_loader:
-        triplet, y_true = data
+        triplet, label = data
         anchor, positive, negative = triplet
+        anchor_y_true, negative_y_true = label
+        
         anchor = anchor.to(device)
-        y_true = y_true.to(device)
-        anchor_emb, y_pred = model(anchor)
-        y_trues.append(y_true)
-        y_preds.append(y_pred)
+        anchor_y_true = anchor_y_true.to(device)
+        
+        anchor_emb, anchor_y_pred = model(anchor)
+        
+        y_trues.append(anchor_y_true)
+        y_preds.append(anchor_y_pred)
 
     y_true =  torch.concat(y_trues, axis=0).cpu().detach().numpy()
     y_pred =  torch.concat(y_preds, axis=0).cpu().detach().numpy()
@@ -141,10 +174,6 @@ def Evaluator(test_loader, model, device):
     return f1, mcc, prc, roc, acc
 
 
-
-def worker_init_fn(worker_id):
-    seed = torch.initial_seed() % 2**32
-    np.random.seed(seed)
     
 
 @torch.no_grad()

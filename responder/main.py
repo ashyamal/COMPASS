@@ -72,8 +72,8 @@ class PreTrainer:
                 batch_size = 64,
                 embed_dim=32,
 
-                K = 1,
-                task_loss_weight = 0.5,
+                K = 0.5,
+                task_loss_weight = 0.0,
                 task_dense_layer = [24],
                 task_batch_norms = False,
                 
@@ -199,8 +199,6 @@ class PreTrainer:
               task_type, 
               df_tpm_test = None, 
               df_task_test = None, 
-              
-              df_tpm_normal = None, 
               aug_method = 'mask',
               scale_method = 'minmax', **augargs):
 
@@ -213,21 +211,18 @@ class PreTrainer:
         
         df_tpm_train = self.scaler.transform(df_tpm_train)
 
-        if aug_method == 'mixup':
-            ### augmentor ###
-            assert df_tpm_normal != None, 'Please input the normal samples to mixup!'
-            df_tpm_normal = self.scaler.transform(df_tpm_normal)
-            self.augmentor = MixupNomralAugmentor(df_tpm_normal, **augargs)
-            
         if aug_method == 'mask':
             self.augmentor = RandomMaskAugmentor(**augargs)
-        if aug_method == 'Jitter':
+        elif aug_method == 'jitter':
             self.augmentor = FeatureJitterAugmentor(**augargs)
-        
+        else:
+            raise ValueError("Invalid method. Use 'mask' or 'jitter'.")
+
         self.task_type = task_type
         self.task_name = task_name
 
         train_tcga = TCGAData(df_tpm_train, df_task_train, self.augmentor, K = self.K)
+        
         self.y_scaler = train_tcga.y_scaler
         self.feature_name = train_tcga.feature_name
         
@@ -585,12 +580,16 @@ class FineTuner:
         self.task_name = task_name
 
         train_itrp = ITRPData(df_tpm_train, df_task_train)
+        # train_itrp = TCGAData(df_tpm_train, df_task_train, 
+        #                       self.pretrainer.augmentor, 
+        #                       K = self.pretrainer.K)
 
         #self.train_itrp = train_itrp
         self.y_scaler = train_itrp.y_scaler
         self.feature_name = train_itrp.feature_name
         
-        train_loader = data.DataLoader(train_itrp, batch_size=self.batch_size, shuffle=True,drop_last=True, 
+        train_loader = data.DataLoader(train_itrp, batch_size=self.batch_size, 
+                                       shuffle=True,drop_last=True, 
                                        worker_init_fn = worker_init_fn,
                                        pin_memory=True, num_workers=4) #
         
