@@ -20,7 +20,7 @@ tmpignore
 *.gzip
 *.out
 
-
+paper
 
 
 # C extensions
