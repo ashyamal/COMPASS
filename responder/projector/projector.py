@@ -16,8 +16,8 @@ import numpy as np
 cwd = os.path.dirname(__file__)
 
 N = 1005 #15672
-GENESET = pd.read_pickle(os.path.join(cwd, str(N), 'GENESET.TABLE'))
-CELLPATHWAY = pd.read_pickle(os.path.join(cwd, str(N), 'CELLTYPE.TABLE'))
+GENESET = pd.read_pickle(os.path.join(cwd, str(N), 'GENESET.DATA'))
+CELLPATHWAY = pd.read_pickle(os.path.join(cwd, str(N), 'CELLTYPE.DATA'))
 
 LEVEL = {'geneset':len(GENESET), 'cellpathway':len(CELLPATHWAY)}
 

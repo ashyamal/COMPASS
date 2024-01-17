@@ -26,10 +26,10 @@ import datetime
 
 
 from responder.dataloader import TCGAData, GeneData, ITRPData
-from responder.augmentor import MixupNomralAugmentor, RandomMaskAugmentor, FeatureJitterAugmentor
+from responder.augmentor import MixupNomralAugmentor, RandomMaskAugmentor, FeatureJitterAugmentor, MaskJitterAugmentor
 from responder.model.scaler import Datascaler
 from responder.model.model import Responder
-from responder.model.train import Trainer, Tester, Predictor, Evaluator
+from responder.model.train import Trainer, Tester, Predictor, Evaluator, Extractor
 from responder.model.loss import TripletLoss, CEWithNaNLabelsLoss, MAEWithNaNLabelsLoss
 from responder.model.saver import SaveBestModel
 from responder.utils import plot_embed_with_label
@@ -75,8 +75,8 @@ class PreTrainer:
                 K = 0.5,
                 task_loss_weight = 0.0,
                 task_dense_layer = [24],
-                task_batch_norms = False,
-                
+                task_batch_norms = True,
+                task_class_weight = [1, 2], 
                 encoder='transformer',
                 encoder_dropout = 0.,
                 
@@ -121,7 +121,7 @@ class PreTrainer:
         self.task_loss_weight = task_loss_weight
         self.task_dense_layer = task_dense_layer
         self.task_batch_norms = task_batch_norms
-        
+        self.task_class_weight = task_class_weight
         self.encoder=encoder
         self.encoder_dropout = encoder_dropout
         self.transformer_dim = transformer_dim
@@ -162,7 +162,7 @@ class PreTrainer:
                                metric = self.triplet_metric)
 
             
-        ce_loss = CEWithNaNLabelsLoss()
+        ce_loss = CEWithNaNLabelsLoss(weights=self.task_class_weight)
         mae_loss = MAEWithNaNLabelsLoss()
         
         optimizer = torch.optim.Adam(model.parameters(), lr = self.lr, 
@@ -215,8 +215,10 @@ class PreTrainer:
             self.augmentor = RandomMaskAugmentor(**augargs)
         elif aug_method == 'jitter':
             self.augmentor = FeatureJitterAugmentor(**augargs)
+        elif aug_method == 'mix':
+            self.augmentor = MaskJitterAugmentor(**augargs)
         else:
-            raise ValueError("Invalid method. Use 'mask' or 'jitter'.")
+            raise ValueError("Invalid method. Use 'mask', 'jitter' or 'mix'.")
 
         self.task_type = task_type
         self.task_name = task_name
@@ -351,6 +353,16 @@ class PreTrainer:
                            device = self.device, batch_size=batch_size,  num_workers=num_workers)
         return dfe, dfp
 
+    
+    def extract(self, df_tpm, batch_size=512,  num_workers=4):
+        model = Responder(**self.saver.inMemorySave['model_args']) 
+        model.load_state_dict(self.saver.inMemorySave['model_state_dict'])
+        model = model.to(self.device)
+        dfg, dfc = Extractor(df_tpm, model, self.scaler, 
+                           device = self.device, batch_size=batch_size, 
+                             num_workers=num_workers)
+        return dfg, dfc
+        
     
     def save(self, mfile):
         if self.with_wandb:
@@ -537,7 +549,7 @@ class FineTuner:
         ssl_loss = TripletLoss(margin=self.triplet_margin, 
                                metric = self.triplet_metric)
 
-        ce_loss = CEWithNaNLabelsLoss(weights=self.task_class_weight) #[1.0, 2.0]
+        ce_loss = CEWithNaNLabelsLoss(weights=self.task_class_weight) 
         mae_loss = MAEWithNaNLabelsLoss()
 
         saver = SaveBestModel(save_dir = save_dir, save_name = 'ft_model.pth')
@@ -692,7 +704,7 @@ class FineTuner:
 
 
 
-    def predict(self, df_tpm, batch_size=512,  num_workers=4):
+    def predict(self, df_tpm, batch_size=512, num_workers=4):
         model = Responder(**self.saver.inMemorySave['model_args']) 
         model.load_state_dict(self.saver.inMemorySave['model_state_dict'])
         model = model.to(self.device)
@@ -701,6 +713,16 @@ class FineTuner:
                              batch_size=batch_size,  num_workers=num_workers)
         return dfe, dfp
 
+    
+    def extract(self, df_tpm, batch_size=512, num_workers=4):
+        model = Responder(**self.saver.inMemorySave['model_args']) 
+        model.load_state_dict(self.saver.inMemorySave['model_state_dict'])
+        model = model.to(self.device)
+        dfg, dfc = Extractor(df_tpm, model, self.scaler, 
+                           device = self.device, batch_size=batch_size, 
+                             num_workers=num_workers)
+        return dfg, dfc
+        
     
     def plot_embed(self, df_tpm, df_label, label_types, **kwargs):
         

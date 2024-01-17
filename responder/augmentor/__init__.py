@@ -1,1 +1,2 @@
-from .aug import MixupNomralAugmentor, RandomMaskAugmentor, FeatureJitterAugmentor
+from .aug import MixupNomralAugmentor, RandomMaskAugmentor
+from .aug import FeatureJitterAugmentor, MaskJitterAugmentor

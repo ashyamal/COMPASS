@@ -91,20 +91,21 @@ class TCGAData(Dataset):
         topK_idx = self.knn_idx[idx]
         
         ## positive sample augmentation
-        p = self.augmentor.augment_p(a)[0]
+        xp = self.augmentor.augment_p(a)[0]
         
         ## negative sample
         neg_idx = np.random.choice(topK_idx)
         n = self.X[neg_idx]
 
         ya = self.y[idx]
+        yp = ya.clone()
         yn = self.y[neg_idx]
 
-        a = self.augmentor.augment_a(a)[0]
-        n = self.augmentor.augment_n(n)[0]
+        xa = self.augmentor.augment_a(a)[0]
+        xn = self.augmentor.augment_n(n)[0]
 
-        x = [a, p, n]
-        y = [ya, yn]
+        x = [xa, xp, xn]
+        y = [ya, yp, yn]
         
         return x, y
 
@@ -118,7 +119,8 @@ class GeneData(Dataset):
         self.feature_name = df_tpm.columns
         self.patient_name = df_tpm.index
         
-        X = torch.tensor(df_tpm.values,dtype=torch.float32).clone().detach()
+        X = torch.tensor(df_tpm.values,
+                         dtype=torch.float32).clone().detach()
         self.X = X
         self.df_tpm = df_tpm
 
@@ -148,7 +150,7 @@ class ITRPData(Dataset):
         self.task_cols = df_task.columns #['NR', 'R',]
         self.task_dim = len(df_task.columns)
         
-        X = torch.tensor(df_tpm.values,dtype=torch.float32).clone().detach()
+        X = torch.tensor(df_tpm.values, dtype=torch.float32).clone().detach()
         self.X = X
 
         y_scaler = MinMaxScaler()
@@ -166,10 +168,10 @@ class ITRPData(Dataset):
     
     def __getitem__(self, idx):
 
-        y = self.y[idx]
+        ya = self.y[idx]
         #print(y)
         ## case responder
-        if y[1] == 1:
+        if ya[1] == 1:
             pos_idx = np.random.choice(self.responder_idx)
             neg_idx = np.random.choice(self.nonresponder_idx) 
         ## case non-responder
@@ -179,15 +181,15 @@ class ITRPData(Dataset):
 
 
         ## anchor sample
-        a = self.X[idx]
-        p = self.X[pos_idx]
-        n = self.X[neg_idx]
+        xa = self.X[idx]
+        xp = self.X[pos_idx]
+        xn = self.X[neg_idx]
         
-        x = [a, p, n]
+        x = [xa, xp, xn]
 
-        # ya = self.y[idx]
-        # yp = self.y[pos_idx]
-        # yn = self.y[neg_idx]
-        # y = [ya, yp, yn]
+        yp = self.y[pos_idx]
+        yn = self.y[neg_idx]
+        
+        y = [ya, yp, yn]
         
         return x, y

@@ -105,14 +105,14 @@ class Responder(nn.Module):
             
         ## regression task
         if task_type == 'r':
-            self.taskdecoder = RegDecoder(embed_dim, 
+            self.taskdecoder = RegDecoder(self.embed_dim, 
                                         dense_layers = task_dense_layer, 
                                         out_dim = task_dim, 
                                         batch_norms = task_batch_norms)
         
         ## classification task
         else:
-            self.taskdecoder = ClassDecoder(embed_dim,
+            self.taskdecoder = ClassDecoder(self.embed_dim,
                                           dense_layers = task_dense_layer, 
                                           out_dim = task_dim, 
                                           batch_norms = task_batch_norms)

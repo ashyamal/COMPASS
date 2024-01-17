@@ -33,12 +33,12 @@ def Trainer(train_loader, model, optimizer, ssl_loss, tsk_loss, device, alpha=0.
         
         triplet, label = data
 
-        anchor_y_true, negative_y_true = label
+        anchor_y_true, positive_y_true, negative_y_true = label
         anchor, positive, negative = triplet
         
         anchor, positive, negative = anchor.to(device), positive.to(device), negative.to(device)
         anchor_y_true = anchor_y_true.to(device)
-        positive_y_true = anchor_y_true.to(device)
+        positive_y_true = positive_y_true.to(device)
         negative_y_true = negative_y_true.to(device)
 
         optimizer.zero_grad()
@@ -52,14 +52,12 @@ def Trainer(train_loader, model, optimizer, ssl_loss, tsk_loss, device, alpha=0.
         else:
             lss = ssl_loss(anchor_emb, positive_emb, negative_emb)
 
-        tsk = tsk_loss(anchor_y_pred, anchor_y_true)
-        #tsk_positive = tsk_loss(positive_y_pred, positive_y_true)
-        #tsk_negative = tsk_loss(negative_y_pred, negative_y_true)
+        #tsk = tsk_loss(anchor_y_pred, anchor_y_true)
 
-        # Concatenate the predictions
-        # y_pred = torch.cat([anchor_y_pred, positive_y_pred, negative_y_pred])
-        # y_true = torch.cat([anchor_y_true, positive_y_true, negative_y_true])
-        # tsk = tsk_loss(y_pred, y_true)
+        #Concatenate the predictions
+        y_pred = torch.cat([anchor_y_pred, positive_y_pred, negative_y_pred])
+        y_true = torch.cat([anchor_y_true, positive_y_true, negative_y_true])
+        tsk = tsk_loss(y_pred, y_true)
 
 
         
@@ -88,14 +86,14 @@ def Tester(test_loader, model, ssl_loss, tsk_loss, device, alpha=1.):
     for data in test_loader:
         triplet, label = data
         anchor, positive, negative = triplet
-        anchor_y_true, negative_y_true = label
+        anchor_y_true, positive_y_true, negative_y_true = label
 
         
         anchor = anchor.to(device)
         positive = positive.to(device)
         negative = negative.to(device)
         anchor_y_true = anchor_y_true.to(device)
-        positive_y_true = anchor_y_true.to(device)
+        positive_y_true = positive_y_true.to(device)
         negative_y_true = negative_y_true.to(device)
 
         anchor_emb, anchor_y_pred = model(anchor)        
@@ -109,11 +107,10 @@ def Tester(test_loader, model, ssl_loss, tsk_loss, device, alpha=1.):
         else:
             lss = ssl_loss(anchor_emb, positive_emb, negative_emb)
         
-        tsk = tsk_loss(anchor_y_pred, anchor_y_true)
-
-        # y_pred = torch.cat([anchor_y_pred, positive_y_pred, negative_y_pred])
-        # y_true = torch.cat([anchor_y_true, positive_y_true, negative_y_true])
-        # tsk = tsk_loss(y_pred, y_true)
+        #tsk = tsk_loss(anchor_y_pred, anchor_y_true)
+        y_pred = torch.cat([anchor_y_pred, positive_y_pred, negative_y_pred])
+        y_true = torch.cat([anchor_y_true, positive_y_true, negative_y_true])
+        tsk = tsk_loss(y_pred, y_true)
 
         loss = (1.-alpha)*lss + tsk*alpha
         
@@ -157,7 +154,7 @@ def Evaluator(test_loader, model, device):
     for data in test_loader:
         triplet, label = data
         anchor, positive, negative = triplet
-        anchor_y_true, negative_y_true = label
+        anchor_y_true, positive_y_true, negative_y_true = label
         
         anchor = anchor.to(device)
         anchor_y_true = anchor_y_true.to(device)
@@ -201,4 +198,40 @@ def Predictor(df_tpm, model, scaler, device = 'cpu', batch_size=512,  num_worker
     dfp = pd.DataFrame(predictions, index = predict_tcga.patient_name)
 
     return dfe, dfp
+
+
+
+@torch.no_grad()
+def Extractor(df_tpm, model, scaler, device = 'cpu', batch_size=512,  num_workers=4):
+    '''
+    Extract geneset-level and celltype-level features
+    '''
+    model.eval()
+    df_tpm = scaler.transform(df_tpm)
+    genesetprojector = model.latentprojector.genesetprojector
+    cellpathwayprojector = model.latentprojector.cellpathwayprojector
     
+    predict_tcga = GeneData(df_tpm)
+    predict_loader = Torchdata.DataLoader(predict_tcga, 
+                                          batch_size=batch_size, 
+                                          shuffle=False,
+                                          pin_memory=True, 
+                                          worker_init_fn = worker_init_fn,
+                                          num_workers=num_workers)
+    geneset_feat = []
+    celltype_feat = []
+    for anchor in tqdm(predict_loader, ascii=True):
+        anchor = anchor.to(device)
+        encoding = model.inputencoder(anchor)
+        geneset_level_proj, cellpathway_level_proj = model.latentprojector(encoding)
+    
+        geneset_feat.append(geneset_level_proj)
+        celltype_feat.append(cellpathway_level_proj)
+    
+    genesetfeatures  = torch.concat(geneset_feat, axis=0).cpu().detach().numpy()
+    celltypefeatures = torch.concat(celltype_feat, axis=0).cpu().detach().numpy()
+    
+    dfgeneset = pd.DataFrame(genesetfeatures, index = predict_tcga.patient_name, columns = genesetprojector.genesets_names)
+    dfcelltype = pd.DataFrame(celltypefeatures, index = predict_tcga.patient_name, columns = cellpathwayprojector.cellpathway_names)
+    
+    return dfgeneset, dfcelltype
