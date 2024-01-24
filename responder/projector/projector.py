@@ -15,16 +15,11 @@ import numpy as np
 
 cwd = os.path.dirname(__file__)
 
-N = 1005 #15672
-GENESET = pd.read_pickle(os.path.join(cwd, str(N), 'GENESET.DATA'))
-CELLPATHWAY = pd.read_pickle(os.path.join(cwd, str(N), 'CELLTYPE.DATA'))
-
-LEVEL = {'geneset':len(GENESET), 'cellpathway':len(CELLPATHWAY)}
 
 
 
 class GeneSetProjector(nn.Module):
-    def __init__(self, geneset_feature_dim, geneset_agg_mode = 'attention', geneset_score_mode = 'linear'):
+    def __init__(self, GENESET, geneset_feature_dim, geneset_agg_mode = 'attention', geneset_score_mode = 'linear'):
         super(GeneSetProjector, self).__init__()
 
         self.geneset_feature_dim = geneset_feature_dim
@@ -52,7 +47,7 @@ class GeneSetProjector(nn.Module):
 
 class CellPathwayProjector(nn.Module):
 
-    def __init__(self, cellpathway_agg_mode = 'pooling'):
+    def __init__(self, CELLPATHWAY, cellpathway_agg_mode = 'pooling'):
         super(CellPathwayProjector, self).__init__()
         self.cellpathway_agg_mode = cellpathway_agg_mode
         self.CELLPATHWAY = CELLPATHWAY
@@ -70,18 +65,27 @@ class CellPathwayProjector(nn.Module):
 
 class DisentangledProjector(nn.Module):
     def __init__(self, 
+                 gene_num,
                  gene_feature_dim,
                  geneset_agg_mode = 'attention', 
                  geneset_score_mode = 'linear', 
                  cellpathway_agg_mode = 'attention'):
         super(DisentangledProjector, self).__init__()
 
-        self.gene_feature_dim=gene_feature_dim
+
+
+        GENESET = pd.read_pickle(os.path.join(cwd, str(gene_num), 'GENESET.DATA'))
+        CELLPATHWAY = pd.read_pickle(os.path.join(cwd, str(gene_num), 'CELLTYPE.DATA'))
+        
+        self.LEVEL = {'geneset':len(GENESET), 'cellpathway':len(CELLPATHWAY)}
+
+
+        self.gene_feature_dim = gene_feature_dim
         self.geneset_agg_mode = geneset_agg_mode
         self.geneset_score_mode = geneset_score_mode
         self.cellpathway_agg_mode = cellpathway_agg_mode
-        self.genesetprojector = GeneSetProjector(self.gene_feature_dim, self.geneset_agg_mode, self.geneset_score_mode)
-        self.cellpathwayprojector = CellPathwayProjector(self.cellpathway_agg_mode)
+        self.genesetprojector = GeneSetProjector(GENESET, self.gene_feature_dim, self.geneset_agg_mode, self.geneset_score_mode)
+        self.cellpathwayprojector = CellPathwayProjector(CELLPATHWAY, self.cellpathway_agg_mode)
 
     def forward(self, x):
         geneset_scores = self.genesetprojector(x)
@@ -89,6 +93,48 @@ class DisentangledProjector(nn.Module):
         return geneset_scores, cellpathway_scores # (256,111); (256, 32)
 
 
+
+
+
+
+class GeneSetPlaceholderAggregator(nn.Module):
+    def __init__(self, genes_num, genesets_num):
+        """
+        Initializes the GeneSetPlaceholderAggregator module.
+        :param gene_sets: A list of lists, where each inner list contains indices of genes in a gene set.
+
+        """
+        super(GeneSetPlaceholderAggregator, self).__init__()
+
+        self.genesets_num = genesets_num
+        self.genes_num = genes_num
+        
+        
+        # Attention weights for each gene in each placeholder gene set
+        self.attention_weights = nn.ParameterDict({
+            f"Placeholder_geneset_{i}": nn.Parameter(torch.randn(genes_num, 1))
+            for i, gene_set in enumerate(range(genesets_num))
+        })
+
+    def forward(self, x):
+        transformed = self.transformer(x)
+        gene_set_outputs = []
+        for i in range(self.genesets_num):
+            weight = self.attention_weights[f"Placeholder_geneset_{i}"]
+            gene_set_output = transformed * weight
+            gene_set_outputs.append(gene_set_output.sum(dim=1))
+
+        return torch.stack(gene_set_outputs, dim=1)
+
+    def adaptive_prune(self):
+        with torch.no_grad():
+            all_weights = torch.cat([param.view(-1) for param in self.attention_weights.values()])
+            threshold = torch.quantile(torch.abs(all_weights), 0.90) # 保留最重要的10%
+            for name, param in self.attention_weights.items():
+                mask = torch.abs(param) >= threshold
+                param.mul_(mask)
+                
+        
 
 
 

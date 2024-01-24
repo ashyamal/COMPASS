@@ -79,6 +79,8 @@ class PreTrainer:
                 task_class_weight = [1, 2], 
                 encoder='transformer',
                 encoder_dropout = 0.,
+                 
+                num_cancer_types = 33,
                 
                 transformer_dim = 32,
                 transformer_num_layers = 1,
@@ -111,7 +113,8 @@ class PreTrainer:
         self.weight_decay = weight_decay
         self.epochs = epochs
         self.batch_size = batch_size
-        self.embed_dim=embed_dim
+        self.embed_dim = embed_dim
+        self.num_cancer_types = num_cancer_types
         
         self.triplet_margin=triplet_margin
         self.triplet_metric=triplet_metric
@@ -146,16 +149,17 @@ class PreTrainer:
     def _setup(self, input_dim, task_dim, task_type, save_dir, run_name):
 
         model = Responder(input_dim, task_dim, task_type, 
-                                  embed_dim = self.embed_dim, 
-                                  encoder = self.encoder, 
-                                  encoder_dropout = self.encoder_dropout,
-                                  mlp_dense_layers = self.mlp_dense_layers, 
-                                  transformer_dim = self.transformer_dim,
-                                  transformer_nhead = self.transformer_nhead,
-                                  transformer_num_layers = self.transformer_num_layers,
-                                  transformer_pos_emb = self.transformer_pos_emb,
-                                  task_dense_layer = self.task_dense_layer, 
-                                  task_batch_norms = self.task_batch_norms, **self.encoder_kwargs) 
+                          num_cancer_types = self.num_cancer_types,
+                          embed_dim = self.embed_dim, 
+                          encoder = self.encoder, 
+                          encoder_dropout = self.encoder_dropout,
+                          mlp_dense_layers = self.mlp_dense_layers, 
+                          transformer_dim = self.transformer_dim,
+                          transformer_nhead = self.transformer_nhead,
+                          transformer_num_layers = self.transformer_num_layers,
+                          transformer_pos_emb = self.transformer_pos_emb,
+                          task_dense_layer = self.task_dense_layer, 
+                          task_batch_norms = self.task_batch_norms, **self.encoder_kwargs) 
         model = model.to(self.device)
 
         ssl_loss = TripletLoss(margin=self.triplet_margin, 
@@ -193,23 +197,24 @@ class PreTrainer:
 
 
     def train(self, 
-              df_tpm_train, 
-              df_task_train, 
+              dfcx_train, 
+              dfy_train, 
               task_name, 
               task_type, 
-              df_tpm_test = None, 
-              df_task_test = None, 
+              dfcx_test = None, 
+              dfy_test = None, 
               aug_method = 'mask',
               scale_method = 'minmax', **augargs):
 
 
         ### scaler ####
+
         self.scale_method = scale_method
         self.scaler = Datascaler(scale_method = scale_method)
-        self.scaler = self.scaler.fit(df_tpm_train)
+        self.scaler = self.scaler.fit(dfcx_train)
         self.aug_method = aug_method
         
-        df_tpm_train = self.scaler.transform(df_tpm_train)
+        dfcx_train = self.scaler.transform(dfcx_train)
 
         if aug_method == 'mask':
             self.augmentor = RandomMaskAugmentor(**augargs)
@@ -223,7 +228,7 @@ class PreTrainer:
         self.task_type = task_type
         self.task_name = task_name
 
-        train_tcga = TCGAData(df_tpm_train, df_task_train, self.augmentor, K = self.K)
+        train_tcga = TCGAData(dfcx_train, dfy_train, self.augmentor, K = self.K)
         
         self.y_scaler = train_tcga.y_scaler
         self.feature_name = train_tcga.feature_name
@@ -235,9 +240,9 @@ class PreTrainer:
         input_dim = len(train_tcga.feature_name)
         task_dim = train_tcga.y.shape[1]
         
-        if df_tpm_test is not None:
-            df_tpm_test = self.scaler.transform(df_tpm_test)
-            test_tcga = TCGAData(df_tpm_test, df_task_test, self.augmentor, K = self.K)
+        if dfcx_test is not None:
+            dfcx_test = self.scaler.transform(dfcx_test)
+            test_tcga = TCGAData(dfcx_test, dfy_test, self.augmentor, K = self.K)
             test_loader = data.DataLoader(test_tcga, batch_size=self.batch_size, 
                                           shuffle=False, worker_init_fn = worker_init_fn,
                                           pin_memory=True, num_workers=4)
@@ -577,22 +582,22 @@ class FineTuner:
 
     
     def tune(self, 
-             df_tpm_train, 
-             df_task_train,
+             dfcx_train, 
+             dfy_train,
              task_name = 'rps', 
              task_type = 'c', 
-             df_tpm_test = None, 
-             df_task_test = None):
+             dfcx_test = None, 
+             dfy_test = None):
 
 
         ### scaler ####
-        df_tpm_train = self.scaler.transform(df_tpm_train)
+        dfcx_train = self.scaler.transform(dfcx_train)
 
         self.task_type = task_type
         self.task_name = task_name
 
-        train_itrp = ITRPData(df_tpm_train, df_task_train)
-        # train_itrp = TCGAData(df_tpm_train, df_task_train, 
+        train_itrp = ITRPData(dfcx_train, dfy_train)
+        # train_itrp = TCGAData(dfcx_train, dfy_train, 
         #                       self.pretrainer.augmentor, 
         #                       K = self.pretrainer.K)
 
@@ -608,9 +613,13 @@ class FineTuner:
         input_dim = len(train_itrp.feature_name)
         task_dim = train_itrp.y.shape[1]
         
-        if df_tpm_test is not None:
-            df_tpm_test = self.scaler.transform(df_tpm_test)
-            test_itrp = ITRPData(df_tpm_test, df_task_test)
+        if dfcx_test is not None:
+            dfcx_test = self.scaler.transform(dfcx_test)
+            test_itrp = ITRPData(dfcx_test, dfy_test)
+            # test_itrp = TCGAData(dfcx_test, dfy_test, 
+            #                       self.pretrainer.augmentor, 
+            #                       K = self.pretrainer.K)
+            
             test_loader = data.DataLoader(test_itrp, batch_size=self.batch_size, shuffle=False,
                                           worker_init_fn = worker_init_fn,
                                           pin_memory=True, num_workers=4)
@@ -790,12 +799,12 @@ class FineTuner:
                   y_train.idxmax(axis=1).value_counts().to_dict())
         
             tuner = FineTuner(self.pretrainer, **param)
-            tuner.tune(df_tpm_train = X_train,
-                        df_task_train = y_train,
+            tuner.tune(dfcx_train = X_train,
+                        dfy_train = y_train,
                         task_name='fold_%s' % i,
                         task_type='c',
-                        df_tpm_test = X_val,
-                        df_task_test = y_val)
+                        dfcx_test = X_val,
+                        dfy_test = y_val)
         
             best_epoch = tuner.saver.inMemorySave['epoch']
             best_epochs.append(best_epoch)

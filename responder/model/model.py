@@ -9,7 +9,6 @@ import torch.nn as nn
 from ..encoder import TransformerEncoder, MLPEncoder
 from ..decoder import ClassDecoder, RegDecoder
 from ..projector import DisentangledProjector, EntangledProjector
-from ..projector.projector import LEVEL
 
 
 
@@ -19,6 +18,7 @@ class Responder(nn.Module):
                  input_dim, 
                  task_dim,
                  task_type,
+                 num_cancer_types = 33,
                  embed_dim = 32,
                  disentangled_embed =  True,
                  embed_level = 'cellpathway',
@@ -38,6 +38,7 @@ class Responder(nn.Module):
         input_dim: input dim
         task_dim: supervised learning task dim
         task_type: {'r', 'c'}
+        num_cancer_types: int, number cancer types, default 33.
         embed_dim: latent vector dim
         encoder: {'transfomer', 'flowformer', ...}
         task_dense_layer: dense layer of task
@@ -51,12 +52,7 @@ class Responder(nn.Module):
         self.embed_level = embed_level
         self.disentangled_embed = disentangled_embed
 
-        
-        if disentangled_embed:
-            self.embed_dim = LEVEL[embed_level]
-        else:
-            self.embed_dim = embed_dim
-            
+        self.num_cancer_types = num_cancer_types
         self.encoder = encoder
         self.encoder_dropout = encoder_dropout
         self.mlp_dense_layers = mlp_dense_layers
@@ -67,13 +63,31 @@ class Responder(nn.Module):
         self.task_batch_norms = task_batch_norms
         self.task_dense_layer = task_dense_layer
         self.encoder_kwargs = encoder_kwargs
+
+        self.inputencoder = TransformerEncoder(num_cancer_types=num_cancer_types,
+                                               encoder_type = encoder,
+                                               input_dim = input_dim, 
+                                               d_model = transformer_dim, 
+                                               num_layers = transformer_num_layers,
+                                               nhead = transformer_nhead,
+                                               dropout = encoder_dropout,
+                                               pos_emb = transformer_pos_emb, 
+                                               **encoder_kwargs)
         
+        if disentangled_embed:
+            self.latentprojector = DisentangledProjector(input_dim, transformer_dim)
+            self.embed_dim = self.latentprojector.LEVEL[embed_level]
+        else:
+            self.latentprojector = EntangledProjector(transformer_dim)
+            self.embed_dim = embed_dim
+            
         model_args = {'input_dim':self.input_dim, 
                 'task_dim':self.task_dim,
                 'task_type':self.task_type, 
                 'embed_level':self.embed_level,
                 'disentangled_embed':self.disentangled_embed,
                 'embed_dim': self.embed_dim, 
+                'num_cancer_types':self.num_cancer_types,
                 'encoder':self.encoder,
                 'encoder_dropout':self.encoder_dropout,
                 'mlp_dense_layers':self.mlp_dense_layers,
@@ -89,19 +103,6 @@ class Responder(nn.Module):
         
         self.model_args = model_args
 
-        self.inputencoder = TransformerEncoder(encoder_type = encoder,
-                                               input_dim = input_dim, 
-                                               d_model = transformer_dim, 
-                                               num_layers = transformer_num_layers,
-                                               nhead = transformer_nhead,
-                                               dropout = encoder_dropout,
-                                               pos_emb = transformer_pos_emb, 
-                                               **encoder_kwargs)
-
-        if self.disentangled_embed:
-            self.latentprojector = DisentangledProjector(transformer_dim)
-        else:
-            self.latentprojector = EntangledProjector(transformer_dim)
             
         ## regression task
         if task_type == 'r':
@@ -118,7 +119,10 @@ class Responder(nn.Module):
                                           batch_norms = task_batch_norms)
 
     def forward(self, x):
-        encoding = self.inputencoder(x)
+        # input : B, L+1, 1
+        #output： B,L+2, (cancer:1,dataset:1, gene),C
+        encoding = self.inputencoder(x) 
+        gene_encoding = encoding[:,:2,:] # take the gene encoding only
         geneset_level_proj, cellpathway_level_proj = self.latentprojector(encoding)
         if self.embed_level == 'cellpathway':
             embedding = cellpathway_level_proj

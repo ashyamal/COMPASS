@@ -80,6 +80,7 @@ def Trainer(train_loader, model, optimizer, ssl_loss, tsk_loss, device, alpha=0.
 @torch.no_grad()
 def Tester(test_loader, model, ssl_loss, tsk_loss, device, alpha=1.):
     model.eval()
+    
     _loss = []
     _ssl_loss = []
     _tsk_loss = []
@@ -174,10 +175,11 @@ def Evaluator(test_loader, model, device):
     
 
 @torch.no_grad()
-def Predictor(df_tpm, model, scaler, device = 'cpu', batch_size=512,  num_workers=4):
+def Predictor(dfcx, model, scaler, device = 'cpu', batch_size=512,  num_workers=4):
     model.eval()
-    df_tpm = scaler.transform(df_tpm)
-    predict_tcga = GeneData(df_tpm)
+    dfcx = scaler.transform(dfcx)
+    
+    predict_tcga = GeneData(dfcx)
     predict_loader = Torchdata.DataLoader(predict_tcga, 
                                           batch_size=batch_size, 
                                           shuffle=False,
@@ -202,16 +204,16 @@ def Predictor(df_tpm, model, scaler, device = 'cpu', batch_size=512,  num_worker
 
 
 @torch.no_grad()
-def Extractor(df_tpm, model, scaler, device = 'cpu', batch_size=512,  num_workers=4):
+def Extractor(dfcx, model, scaler, device = 'cpu', batch_size=512,  num_workers=4):
     '''
     Extract geneset-level and celltype-level features
     '''
     model.eval()
-    df_tpm = scaler.transform(df_tpm)
+    dfcx = scaler.transform(dfcx)
     genesetprojector = model.latentprojector.genesetprojector
     cellpathwayprojector = model.latentprojector.cellpathwayprojector
     
-    predict_tcga = GeneData(df_tpm)
+    predict_tcga = GeneData(dfcx)
     predict_loader = Torchdata.DataLoader(predict_tcga, 
                                           batch_size=batch_size, 
                                           shuffle=False,

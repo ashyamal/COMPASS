@@ -76,16 +76,18 @@ class RandomMaskAugmentor:
         self.mask_n_prob = mask_n_prob
         self.n_views = n_views
 
-        
+ 
     def _transform(self, x, probability):
-        
-        x_np = x.clone().numpy()
-        random_values = np.random.rand(*x_np.shape)
-        mask = random_values < probability
-        x_np[mask] = 0
-        x_new = torch.from_numpy(x_np).to(x.device)
-        return x_new
 
+        #[1006]
+        
+        random_values = torch.rand(len(x[1:]), device=x.device)
+        mask = random_values < probability
+
+        x_new = x.clone()
+        x_new[1:][mask] = 0  # 从第二个元素开始应用掩码
+        return x_new
+        
     def _augment(self, x, mask_prob):
         return [self._transform(x, mask_prob) for _ in range(self.n_views)]
 
@@ -130,11 +132,14 @@ class FeatureJitterAugmentor:
 
     
     def _transform(self, x, jitter_std):
-        # Generate jittering noise
-        jitter = torch.normal(mean=0, std=jitter_std, size=x.size())
-        # Apply jittering to the vector
-        x_jittered = x.clone() + jitter
-        return x_jittered.to(x.device)
+        
+        # 为除了第一个元素之外的部分生成抖动噪声
+        jitter = torch.normal(mean=0, std=jitter_std, size=x[1:].size(), device=x.device)
+        # 创建一个新的向量，第一个元素保持不变，其他部分加上抖动
+        x_jittered = x.clone()
+        x_jittered[1:] += jitter
+        return x_jittered
+
 
     def _augment(self, x, jitter_std):
         return [self._transform(x, jitter_std) for _ in range(self.n_views)]

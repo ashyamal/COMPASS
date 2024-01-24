@@ -48,7 +48,7 @@ class AttentionAggregator(nn.Module):
         super(AttentionAggregator, self).__init__()
 
         self.agg_indices_series = agg_indices_series
-        self.agg_indices = agg_indices
+        self.agg_indices = agg_indices_series.tolist() 
 
         # Attention weights for each cell type/pathway in each cellpathway set
         self.attention_weights = nn.ParameterDict({
@@ -73,7 +73,7 @@ class AttentionAggregator(nn.Module):
             set_features = gene_set_features[:, getset_idx]
             attention_scores = F.softmax(self.attention_weights[f"{name}"], dim=0)
             weighted_features = set_features * attention_scores.T
-            aggregated_features[:, i] = torch.mean(weighted_features, dim=1)
+            aggregated_features[:, i] = torch.sum(weighted_features, dim=1)
             i += 1
             
         return aggregated_features

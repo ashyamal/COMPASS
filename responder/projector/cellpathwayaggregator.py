@@ -36,7 +36,7 @@ class CellPathwayPoolingAggregator(nn.Module):
 
 
 class CellPathwayAttentionAggregator(nn.Module):
-    def __init__(self, cellpathway_indices):
+    def __init__(self, cellpathway_indices, softmax_mean = True):
         """
         Initializes the CellPathwayAttentionAggregator module.
 
@@ -44,7 +44,7 @@ class CellPathwayAttentionAggregator(nn.Module):
         """
         super(CellPathwayAttentionAggregator, self).__init__()
         self.cellpathway_indices = cellpathway_indices
-
+        self.softmax_mean = softmax_mean
 
         # Attention weights for each cell type/pathway in each cellpathway set
         self.attention_weights = nn.ParameterDict({
@@ -65,10 +65,14 @@ class CellPathwayAttentionAggregator(nn.Module):
 
         for i, cellpathway in enumerate(self.cellpathway_indices):
             set_features = geneset_features[:, cellpathway]
-            attention_scores = F.softmax(self.attention_weights[f"cellpathway_{i}"], dim=0)
-            weighted_features = set_features * attention_scores.T
-            aggregated_features[:, i] = torch.mean(weighted_features, dim=1)
-
+            if self.softmax_mean:
+                attention_scores = F.softmax(self.attention_weights[f"cellpathway_{i}"], dim=0)
+                weighted_features = set_features * attention_scores.T
+                aggregated_features[:, i] = torch.mean(weighted_features, dim=1)
+            else:
+                attention_scores = self.attention_weights[f"cellpathway_{i}"]
+                weighted_features = set_features * attention_scores.T
+                aggregated_features[:, i] = torch.mean(weighted_features, dim=1)                
         return aggregated_features
 
 

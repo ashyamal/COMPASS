@@ -57,19 +57,32 @@ class Datascaler:
         self.scaler = scaler
         
       
-    def fit(self, dfx):
+    def fit(self, dfcx):
+
+        ## do not fit the first column
+        dfx = dfcx[dfcx.columns[1:]]
+        dfc = dfcx[dfcx.columns[0]]
+        
         df = np.log2(dfx + 1)
         self.scaler.fit(df)
         return self
 
     
-    def transform(self, dfx):
+    def transform(self, dfcx):
+
+        ## do not transform the first column
+        dfx = dfcx[dfcx.columns[1:]]
+        dfc = dfcx[[dfcx.columns[0]]]
+        
         df = np.log2(dfx + 1)
         X = self.scaler.transform(df)        
-        df_scaled = pd.DataFrame(X, columns = dfx.columns, 
+        dfx_scaled = pd.DataFrame(X, columns = dfx.columns, 
                                  index=dfx.index)
+        df_scaled = dfc.join(dfx_scaled)
+        
         return df_scaled
 
+    
     def fit_transform(self, dfx):
         self = self.fit(dfx)
         df_scaled = self.transform(dfx)

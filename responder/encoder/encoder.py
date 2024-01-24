@@ -101,7 +101,8 @@ class Encoder(nn.Module):
 
 
 class TransformerEncoder(nn.Module):
-    def __init__(self, encoder_type = 'transformer', input_dim = 876, nhead = 2,
+    def __init__(self, num_cancer_types = 33, 
+                 encoder_type = 'transformer', input_dim = 15672, nhead = 2,
                  d_model = 32, num_layers = 2, dropout = 0., dim_feedforward = 128,
                  pos_emb = 'learnable', **kwargs):
         '''
@@ -111,8 +112,19 @@ class TransformerEncoder(nn.Module):
         '''
         super().__init__()
         self.encoder_type = encoder_type
+        self.num_cancer_types = num_cancer_types
+        self.input_dim = input_dim
+        self.nhead = nhead
+        self.d_model = d_model
+        self.num_layers = num_layers
+        self.dropout = dropout
+        self.dim_feedforward = dim_feedforward
+        self.pos_emb = pos_emb
+
         
-        self.embedder = GeneEmbedding(input_dim, d_model, pos_emb)
+        self.gene_token_embedder = GeneEmbedding(input_dim, d_model, pos_emb)
+        self.cancer_token_embedder = nn.Embedding(num_cancer_types, d_model)
+        self.dataset_token_embedder = nn.Parameter(torch.randn(1, d_model))
 
         self.encoder = Encoder(encoder_type = encoder_type, 
                                d_model = d_model, 
@@ -120,8 +132,20 @@ class TransformerEncoder(nn.Module):
                                dim_feedforward = dim_feedforward,
                                nhead = nhead, num_layers = num_layers, **kwargs)
 
-    def forward(self,x):
-        x = self.encoder(self.embedder(x))
+    def forward(self, x):
+
+        cancer_types = x[:, 0].long()  #first column is the cancer type
+        genes = x[:, 1:]  # 
+
+        # convert cancer types
+        cancer_embed = self.cancer_token_embedder(cancer_types).unsqueeze(1) # B,1, C
+        # expand dataset token
+        dataset_embed = self.dataset_token_embedder.expand(x.size(0), -1).unsqueeze(1) #B,1, C
+        gene_embed = self.gene_token_embedder(genes) #B, L, C
+        # concat dataset_embed,cancer_embed,
+        transformer_input = torch.cat([cancer_embed, dataset_embed, gene_embed], dim=1) # B, L+2, C
+
+        x = self.encoder(transformer_input)
         return x
 
 
