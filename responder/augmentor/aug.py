@@ -167,10 +167,10 @@ class MaskJitterAugmentor:
     """Mixed augmentation"""
 
     def __init__(self, 
-                 mask_p_prob = 0.5,
+                 mask_p_prob = 0.1,
                  mask_a_prob = None, 
                  mask_n_prob = None,
-                 jitter_p_std = 0.25,
+                 jitter_p_std = 0.1,
                  jitter_a_std = None, 
                  jitter_n_std = None,
                  n_views=1):

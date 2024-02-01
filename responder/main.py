@@ -11,7 +11,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 sns.set(style = 'white', font_scale=1.5)
-
+from tqdm import tqdm
 import torch
 import wandb
 
@@ -68,30 +68,29 @@ class PreTrainer:
                 weight_decay = 1e-6,
                 epochs = 100,
                 patience = 10, 
-                
                 batch_size = 64,
+                 
                 embed_dim=32,
-
-                K = 0.5,
                 task_loss_weight = 0.0,
                 task_dense_layer = [24],
                 task_batch_norms = True,
-                task_class_weight = [1, 2], 
+                task_class_weight = None, 
                 encoder='transformer',
                 encoder_dropout = 0.,
-                 
                 num_cancer_types = 33,
                 
                 transformer_dim = 32,
                 transformer_num_layers = 1,
                 transformer_nhead = 2,
                 transformer_pos_emb = 'learnable',
-
-                mlp_dense_layers = [128],  
-
+                batch_correction = False,
+                proj_level = 'cellpathway',
+                proj_pid = False,
+                proj_cancer_type = True,
+                 
                 triplet_metric = 'cosine',
                 triplet_margin=1.,
-                 
+                K = 1,                 
                 seed = 42,
 
                 work_dir = './results',
@@ -125,14 +124,18 @@ class PreTrainer:
         self.task_dense_layer = task_dense_layer
         self.task_batch_norms = task_batch_norms
         self.task_class_weight = task_class_weight
-        self.encoder=encoder
+        self.encoder = encoder
         self.encoder_dropout = encoder_dropout
         self.transformer_dim = transformer_dim
         self.transformer_nhead = transformer_nhead
         self.transformer_num_layers = transformer_num_layers
         self.transformer_pos_emb = transformer_pos_emb
-        self.mlp_dense_layers = mlp_dense_layers
-
+        
+        self.batch_correction = batch_correction
+        self.proj_level = proj_level
+        self.proj_pid = proj_pid
+        self.proj_cancer_type = proj_cancer_type
+        
         fixseed(seed=seed)
         self.seed = seed
 
@@ -149,17 +152,23 @@ class PreTrainer:
     def _setup(self, input_dim, task_dim, task_type, save_dir, run_name):
 
         model = Responder(input_dim, task_dim, task_type, 
+                          proj_level = self.proj_level,
+                          proj_pid = self.proj_pid,
+                          proj_cancer_type = self.proj_cancer_type,
+                          
                           num_cancer_types = self.num_cancer_types,
                           embed_dim = self.embed_dim, 
                           encoder = self.encoder, 
                           encoder_dropout = self.encoder_dropout,
-                          mlp_dense_layers = self.mlp_dense_layers, 
+                          
                           transformer_dim = self.transformer_dim,
                           transformer_nhead = self.transformer_nhead,
                           transformer_num_layers = self.transformer_num_layers,
                           transformer_pos_emb = self.transformer_pos_emb,
                           task_dense_layer = self.task_dense_layer, 
-                          task_batch_norms = self.task_batch_norms, **self.encoder_kwargs) 
+                          task_batch_norms = self.task_batch_norms, 
+                          **self.encoder_kwargs)
+        
         model = model.to(self.device)
 
         ssl_loss = TripletLoss(margin=self.triplet_margin, 
@@ -199,16 +208,15 @@ class PreTrainer:
     def train(self, 
               dfcx_train, 
               dfy_train, 
-              task_name, 
-              task_type, 
               dfcx_test = None, 
               dfy_test = None, 
-              aug_method = 'mask',
+              task_name = 'notask', 
+              task_type = 'c', 
+              aug_method = 'jitter',
               scale_method = 'minmax', **augargs):
 
 
         ### scaler ####
-
         self.scale_method = scale_method
         self.scaler = Datascaler(scale_method = scale_method)
         self.scaler = self.scaler.fit(dfcx_train)
@@ -234,7 +242,7 @@ class PreTrainer:
         self.feature_name = train_tcga.feature_name
         
         train_loader = data.DataLoader(train_tcga, batch_size=self.batch_size, 
-                                       shuffle=True, worker_init_fn = worker_init_fn,
+                                       shuffle = True, worker_init_fn = worker_init_fn,
                                         drop_last=True, pin_memory=True, num_workers=4)
         
         input_dim = len(train_tcga.feature_name)
@@ -269,7 +277,8 @@ class PreTrainer:
         for epoch in range(self.epochs):
             train_total_loss, train_ssl_loss, train_tsk_loss = Trainer(train_loader, self.model, self.optimizer, 
                                                                      self.ssl_loss, self.tsk_loss, self.device, 
-                                                                     alpha = self.task_loss_weight)
+                                                                     alpha = self.task_loss_weight, 
+                                                                       correction = self.batch_correction)
 
             if test_loader is not None:
                 test_total_loss, test_ssl_loss, test_tsk_loss = Tester(test_loader, self.model, self.ssl_loss, 
@@ -285,7 +294,6 @@ class PreTrainer:
                 else:
                     patience_counter += 1  # Increment the counter if no improvement
 
-        
             else:
                 test_total_loss, test_ssl_loss, test_tsk_loss = np.nan, np.nan, np.nan
                 self.saver(train_total_loss, epoch, self.model, self.optimizer, self.scaler)   
@@ -423,7 +431,8 @@ class FineTuner:
                 task_dense_layer = [24],
                 task_batch_norms = True,
                 task_class_weight = [1, 2], 
-                 
+                batch_correction = False,
+                entropy_weight = 0.0,
                 seed = 42,
                 verbose = True,
                 with_wandb = False,
@@ -457,7 +466,10 @@ class FineTuner:
         self.task_dense_layer = task_dense_layer
         self.task_batch_norms = task_batch_norms
         self.task_class_weight = task_class_weight
+        self.batch_correction = batch_correction
 
+        self.entropy_weight = entropy_weight
+        
         self.seed = seed
         fixseed(seed)
         
@@ -479,12 +491,12 @@ class FineTuner:
                        'triplet_margin':self.triplet_margin, 
                        
                        'triplet_metric':self.triplet_metric,
-                       
+                        'entropy_weight':self.entropy_weight,
                        'task_loss_weight':self.task_loss_weight,
                        'task_dense_layer':self.task_dense_layer,
                        'task_batch_norms': self.task_batch_norms,
                        'task_class_weight':self.task_class_weight,
-                       
+                       'batch_correction':self.batch_correction,
                        'work_dir':self.work_dir,
                        'with_wandb':self.with_wandb,
                        'wandb_project':self.wandb_project,
@@ -502,7 +514,7 @@ class FineTuner:
         model_weights = deepcopy(pretrainer.saver.inMemorySave['model_state_dict'])
         
         model_args['task_dim'] = task_dim
-        model_args['task_type'] = task_type
+        model_args['task_type'] = task_type #'f'
         model_args['task_dense_layer'] = self.task_dense_layer  
         model_args['task_batch_norms'] = self.task_batch_norms
 
@@ -512,11 +524,13 @@ class FineTuner:
         encoder_state = OrderedDict()
         for k, v in model_weights.items():
             if self.load_decoder:
-                print('Load: %s' % k)
+                if self.verbose:
+                    print('Load: %s' % k)
                 encoder_state[k] = v
             else:
                 if not 'taskdecoder' in k:
-                    print('Load: %s' % k)
+                    if self.verbose:
+                        print('Load: %s' % k)
                     encoder_state[k] = v
 
 
@@ -548,7 +562,7 @@ class FineTuner:
                     {'params': model.taskdecoder.parameters()}, #, 'lr': 1e-3
                     ]
 
-
+        
         optimizer = torch.optim.Adam(plist, lr = self.lr, weight_decay = self.weight_decay)
 
         ssl_loss = TripletLoss(margin=self.triplet_margin, 
@@ -584,10 +598,12 @@ class FineTuner:
     def tune(self, 
              dfcx_train, 
              dfy_train,
-             task_name = 'rps', 
-             task_type = 'c', 
              dfcx_test = None, 
-             dfy_test = None):
+             dfy_test = None,
+             task_name = 'rps', 
+             task_type = 'f',
+             augmentation = True
+            ):
 
 
         ### scaler ####
@@ -597,9 +613,11 @@ class FineTuner:
         self.task_name = task_name
 
         train_itrp = ITRPData(dfcx_train, dfy_train)
-        # train_itrp = TCGAData(dfcx_train, dfy_train, 
-        #                       self.pretrainer.augmentor, 
-        #                       K = self.pretrainer.K)
+        
+        if augmentation:
+            train_itrp = TCGAData(dfcx_train, dfy_train, 
+                                  self.pretrainer.augmentor, 
+                                  K = self.pretrainer.K)
 
         #self.train_itrp = train_itrp
         self.y_scaler = train_itrp.y_scaler
@@ -616,11 +634,14 @@ class FineTuner:
         if dfcx_test is not None:
             dfcx_test = self.scaler.transform(dfcx_test)
             test_itrp = ITRPData(dfcx_test, dfy_test)
-            # test_itrp = TCGAData(dfcx_test, dfy_test, 
-            #                       self.pretrainer.augmentor, 
-            #                       K = self.pretrainer.K)
+            # if augmentation:
+            #     test_itrp = TCGAData(dfcx_test, dfy_test, 
+            #                           self.pretrainer.augmentor, 
+            #                           K = self.pretrainer.K)
             
-            test_loader = data.DataLoader(test_itrp, batch_size=self.batch_size, shuffle=False,
+            test_loader = data.DataLoader(test_itrp, 
+                                          batch_size=self.batch_size, 
+                                          shuffle=False,
                                           worker_init_fn = worker_init_fn,
                                           pin_memory=True, num_workers=4)
         else:
@@ -635,6 +656,16 @@ class FineTuner:
         
         ## init model, operimizer, ...
         self._setup(self.pretrainer, task_dim, task_type, self.save_dir, self.run_name)
+
+        ## init the taskdecoder
+        if task_type == 'f':
+            ## claculate the support set features
+            dfcx_train_emb, _ = self.pretrainer.predict(dfcx_train, batch_size=128)
+            support_features = torch.tensor(dfcx_train_emb.values)
+            support_labels = torch.tensor(dfy_train.values)
+            self.model.taskdecoder.initialize_parameters(support_features, support_labels)
+
+
         self.input_dim = input_dim
         self.task_dim = task_dim
 
@@ -643,10 +674,13 @@ class FineTuner:
 
         best_val_loss = float('inf') 
         patience_counter = 0
-        for epoch in range(self.epochs):
+        for epoch in tqdm(range(self.epochs), ascii=True):
             train_total_loss, train_ssl_loss, train_tsk_loss = Trainer(train_loader, self.model, self.optimizer, 
-                                                                     self.ssl_loss, self.tsk_loss, self.device, 
-                                                                     alpha = self.task_loss_weight)
+                                                                        self.ssl_loss, self.tsk_loss, self.device, 
+                                                                        alpha = self.task_loss_weight, 
+                                                                        correction = self.batch_correction,
+                                                                        entropy_weight = self.entropy_weight,
+                                                                      )
 
             #train_f1, train_mcc, train_prc, train_roc, train_acc = Evaluator(train_loader, model, device)
             
@@ -655,7 +689,8 @@ class FineTuner:
                 #test_f1, test_mcc, test_prc, test_roc, test_acc = Evaluator(test_loader, model, device)
                 test_total_loss, test_ssl_loss, test_tsk_loss = Tester(test_loader, self.model, self.ssl_loss, 
                                                                      self.tsk_loss, self.device, 
-                                                                     alpha =self.task_loss_weight)
+                                                                     alpha =self.task_loss_weight,
+                                                                      )
                 self.saver(test_total_loss, epoch, self.model, self.optimizer, self.scaler)
 
                 # Early Stopping Check

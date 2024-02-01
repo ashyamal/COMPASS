@@ -68,7 +68,7 @@ class CellPathwayAttentionAggregator(nn.Module):
             if self.softmax_mean:
                 attention_scores = F.softmax(self.attention_weights[f"cellpathway_{i}"], dim=0)
                 weighted_features = set_features * attention_scores.T
-                aggregated_features[:, i] = torch.mean(weighted_features, dim=1)
+                aggregated_features[:, i] = torch.sum(weighted_features, dim=1)
             else:
                 attention_scores = self.attention_weights[f"cellpathway_{i}"]
                 weighted_features = set_features * attention_scores.T

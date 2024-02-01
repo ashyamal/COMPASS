@@ -12,7 +12,7 @@ from torchvision.ops import MLP
 
 import copy, torch
 from .layer import CosformerLayer, PerformerLayer, VanillaTransformerLayer, FlowformerLayer
-from ..embedder import GeneEmbedding
+from ..embedder import GeneEmbedding, _GeneInitialization
 #from .layer import  FlashTransformerEncoderLayer
 from .layer.norm import create_norm
 
@@ -23,7 +23,7 @@ def _get_clones(module, N):
 
 class Encoder(nn.Module):
 
-    def __init__(self, encoder_type= 'transformer', d_model = 32, dim_feedforward = 128,
+    def __init__(self, encoder_type= 'transformer', d_model = 32, dim_feedforward = 64,
                  nhead = 2, num_layers = 1, dropout = 0, norm = None, **kwargs):
         
         super(Encoder, self).__init__()
@@ -103,7 +103,7 @@ class Encoder(nn.Module):
 class TransformerEncoder(nn.Module):
     def __init__(self, num_cancer_types = 33, 
                  encoder_type = 'transformer', input_dim = 15672, nhead = 2,
-                 d_model = 32, num_layers = 2, dropout = 0., dim_feedforward = 128,
+                 d_model = 32, num_layers = 2, dropout = 0., dim_feedforward = 32,
                  pos_emb = 'learnable', **kwargs):
         '''
         encoder_type: {'transformer', 'reformer', 'performer'}
@@ -121,10 +121,12 @@ class TransformerEncoder(nn.Module):
         self.dim_feedforward = dim_feedforward
         self.pos_emb = pos_emb
 
-        
-        self.gene_token_embedder = GeneEmbedding(input_dim, d_model, pos_emb)
+        self.pid_token_embedder = nn.Parameter(torch.randn(1, d_model))
+        initialization_ = _GeneInitialization.from_str('uniform')
+        initialization_.apply(self.pid_token_embedder, d_model)
+
         self.cancer_token_embedder = nn.Embedding(num_cancer_types, d_model)
-        self.dataset_token_embedder = nn.Parameter(torch.randn(1, d_model))
+        self.gene_token_embedder = GeneEmbedding(input_dim, d_model, pos_emb)
 
         self.encoder = Encoder(encoder_type = encoder_type, 
                                d_model = d_model, 
@@ -137,13 +139,15 @@ class TransformerEncoder(nn.Module):
         cancer_types = x[:, 0].long()  #first column is the cancer type
         genes = x[:, 1:]  # 
 
+        # expand patient/sample/dataset token (equals to the CLS token)
+        pid_embed = self.pid_token_embedder.expand(x.size(0), -1).unsqueeze(1) #B,1, C
         # convert cancer types
         cancer_embed = self.cancer_token_embedder(cancer_types).unsqueeze(1) # B,1, C
-        # expand dataset token
-        dataset_embed = self.dataset_token_embedder.expand(x.size(0), -1).unsqueeze(1) #B,1, C
+        # gene embeddings
         gene_embed = self.gene_token_embedder(genes) #B, L, C
+        
         # concat dataset_embed,cancer_embed,
-        transformer_input = torch.cat([cancer_embed, dataset_embed, gene_embed], dim=1) # B, L+2, C
+        transformer_input = torch.cat([pid_embed, cancer_embed, gene_embed], dim=1) # B, L+2, C
 
         x = self.encoder(transformer_input)
         return x

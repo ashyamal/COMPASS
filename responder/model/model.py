@@ -7,8 +7,10 @@ Created on Fri Nov  3 13:31:25 2023
 """
 import torch.nn as nn
 from ..encoder import TransformerEncoder, MLPEncoder
-from ..decoder import ClassDecoder, RegDecoder
+from ..decoder import ClassDecoder, RegDecoder, SoftmaxClassifier
 from ..projector import DisentangledProjector, EntangledProjector
+
+
 
 
 
@@ -20,8 +22,13 @@ class Responder(nn.Module):
                  task_type,
                  num_cancer_types = 33,
                  embed_dim = 32,
-                 disentangled_embed =  True,
-                 embed_level = 'cellpathway',
+                 
+                 #### projections
+                 proj_disentangled =  True,
+                 proj_level = 'cellpathway',
+                 proj_pid = False,
+                 proj_cancer_type = True,
+                 
                  encoder = 'transformer',
                  encoder_dropout = 0.,
                  task_dense_layer=[24],
@@ -30,12 +37,11 @@ class Responder(nn.Module):
                  transformer_num_layers = 1,
                  transformer_nhead = 2,
                  transformer_pos_emb = 'learnable',
-                 mlp_dense_layers = [128],
                  **encoder_kwargs
                 ):
         
         '''
-        input_dim: input dim
+        input_dim:  number of tokens
         task_dim: supervised learning task dim
         task_type: {'r', 'c'}
         num_cancer_types: int, number cancer types, default 33.
@@ -46,16 +52,19 @@ class Responder(nn.Module):
         '''
         super().__init__()
 
+        
         self.input_dim = input_dim
         self.task_dim = task_dim
         self.task_type = task_type 
-        self.embed_level = embed_level
-        self.disentangled_embed = disentangled_embed
+
+        self.proj_disentangled = proj_disentangled
+        self.proj_level = proj_level
+        self.proj_pid = proj_pid
+        self.proj_cancer_type = proj_cancer_type
 
         self.num_cancer_types = num_cancer_types
         self.encoder = encoder
         self.encoder_dropout = encoder_dropout
-        self.mlp_dense_layers = mlp_dense_layers
         self.transformer_dim = transformer_dim
         self.transformer_num_layers = transformer_num_layers
         self.transformer_pos_emb = transformer_pos_emb
@@ -74,62 +83,94 @@ class Responder(nn.Module):
                                                pos_emb = transformer_pos_emb, 
                                                **encoder_kwargs)
         
-        if disentangled_embed:
-            self.latentprojector = DisentangledProjector(input_dim, transformer_dim)
-            self.embed_dim = self.latentprojector.LEVEL[embed_level]
+        if proj_disentangled:
+            self.latentprojector = DisentangledProjector(input_dim, transformer_dim, 
+                                                         proj_pid = proj_pid, 
+                                                         proj_cancer_type = proj_cancer_type)
+
+            self.geneset_feature_name = self.latentprojector.geneset_proj_cols
+            self.celltype_feature_name = self.latentprojector.cellpathway_proj_cols
+            self.ref_genes = self.latentprojector.REFGENES
+            
+            if  proj_level == 'cellpathway':
+                self.embed_dim = len(self.celltype_feature_name)
+                self.embed_feature_names = self.celltype_feature_name
+            else:
+                self.embed_dim = len(self.geneset_feature_name)
+                self.embed_feature_names = self.geneset_feature_name
+
         else:
             self.latentprojector = EntangledProjector(transformer_dim)
+            self.embed_feature_names = range(len(embed_dim))
             self.embed_dim = embed_dim
-            
+
+
+        
         model_args = {'input_dim':self.input_dim, 
-                'task_dim':self.task_dim,
-                'task_type':self.task_type, 
-                'embed_level':self.embed_level,
-                'disentangled_embed':self.disentangled_embed,
-                'embed_dim': self.embed_dim, 
-                'num_cancer_types':self.num_cancer_types,
-                'encoder':self.encoder,
-                'encoder_dropout':self.encoder_dropout,
-                'mlp_dense_layers':self.mlp_dense_layers,
-                'transformer_dim':self.transformer_dim,
-                'transformer_nhead':self.transformer_nhead,
-                'transformer_num_layers':self.transformer_num_layers,
-                'transformer_pos_emb':self.transformer_pos_emb,
-                'task_batch_norms':self.task_batch_norms,
-                'task_dense_layer':self.task_dense_layer,
+                    'task_dim':self.task_dim,
+                    'task_type':self.task_type, 
+                      
+                    'proj_level':self.proj_level,
+                    'proj_pid':self.proj_pid,
+                    'proj_cancer_type':self.proj_cancer_type,
+                    'proj_disentangled':self.proj_disentangled,
+                      
+                    'embed_dim': self.embed_dim, 
+                    'num_cancer_types':self.num_cancer_types,
+                    'encoder':self.encoder,
+                    'encoder_dropout':self.encoder_dropout,
+                    'transformer_dim':self.transformer_dim,
+                    'transformer_nhead':self.transformer_nhead,
+                    'transformer_num_layers':self.transformer_num_layers,
+                    'transformer_pos_emb':self.transformer_pos_emb,
+                    'task_batch_norms':self.task_batch_norms,
+                    'task_dense_layer':self.task_dense_layer,
                }
 
-        model_args.update(encoder_kwargs)
-        
+        model_args.update(encoder_kwargs)        
         self.model_args = model_args
 
-            
         ## regression task
         if task_type == 'r':
-            self.taskdecoder = RegDecoder(self.embed_dim, 
+            self.taskdecoder = RegDecoder(input_dim = self.embed_dim, 
                                         dense_layers = task_dense_layer, 
                                         out_dim = task_dim, 
                                         batch_norms = task_batch_norms)
         
         ## classification task
-        else:
-            self.taskdecoder = ClassDecoder(self.embed_dim,
+        elif task_type == 'c':
+            self.taskdecoder = ClassDecoder(input_dim = self.embed_dim, 
                                           dense_layers = task_dense_layer, 
                                           out_dim = task_dim, 
                                           batch_norms = task_batch_norms)
 
+        #for softmax classifier
+        elif task_type == 'f':
+            self.taskdecoder = SoftmaxClassifier(input_dim = self.embed_dim, 
+                                                 out_dim = task_dim)
+            
+            
+
+    
+            
     def forward(self, x):
-        # input : B, L+1, 1
-        #output： B,L+2, (cancer:1,dataset:1, gene),C
+
+        #output： B,L+2, (dataset:1, cancer:1, gene),C
         encoding = self.inputencoder(x) 
-        gene_encoding = encoding[:,:2,:] # take the gene encoding only
         geneset_level_proj, cellpathway_level_proj = self.latentprojector(encoding)
-        if self.embed_level == 'cellpathway':
-            embedding = cellpathway_level_proj
-        else:
+        
+        # task_inputs: only input the context-oriented features (for downstream task)
+        # Embedding: embeddings for contrastive learning
+        if self.proj_level == 'geneset':
             embedding = geneset_level_proj
+
+        elif self.proj_level == 'cellpathway':
+            embedding = cellpathway_level_proj
+
+        
         y = self.taskdecoder(embedding)
-        return embedding, y
 
+        gene_encoding = encoding[:, 2:, :]
+        refgene_encoding = gene_encoding[:, self.ref_genes, :]
 
-
+        return (embedding, refgene_encoding), y

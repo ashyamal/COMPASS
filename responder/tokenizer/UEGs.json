@@ -1,0 +1,18 @@
+[
+    {"Gene": "ACTB", "Description": "β-actin"},
+    {"Gene": "UBC", "Description": "Ubiquitin C"},
+    {"Gene": "HNRNPK", "Description": "Heterogeneous Nuclear Ribonucleoprotein K"},
+    {"Gene": "YWHAZ", "Description": "14-3-3 protein zeta/delta"},
+    {"Gene": "EEF2", "Description": "Eukaryotic Translation Elongation Factor 2"},
+    {"Gene": "EIF1", "Description": "Eukaryotic Translation Initiation Factor 1"},
+    {"Gene": "GAPDH", "Description": "Glyceraldehyde-3-Phosphate Dehydrogenase"},
+    {"Gene": "RPL19", "Description": "Ribosomal Protein L19"},
+    {"Gene": "RPL4", "Description": "Ribosomal Protein L4"},
+    {"Gene": "RPL3", "Description": "Ribosomal Protein L3"},
+    {"Gene": "RPL13A", "Description": "Ribosomal Protein L13A"},
+    {"Gene": "RPS11", "Description": "Ribosomal Protein S11"},
+    {"Gene": "RPS12", "Description": "Ribosomal Protein S12"},
+    {"Gene": "RPS27", "Description": "Ribosomal Protein S27"},
+    {"Gene": "PSMB4", "Description": "Proteasome Subunit Beta 4"},
+    {"Gene": "RPL19", "Description": "Ribosomal Protein L19"}
+]

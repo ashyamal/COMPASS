@@ -81,7 +81,7 @@ class GeneSetAttentionAggregator(nn.Module):
             if self.softmax_mean:
                 attention = F.softmax(self.attention_weights[f"geneset_{i}"].expand(batch_size, -1, -1), dim=1)
                 weighted_features = set_features * attention
-                aggregated_features = torch.mean(weighted_features, dim=1)
+                aggregated_features = torch.sum(weighted_features, dim=1)
 
             else:
                 attention = self.attention_weights[f"geneset_{i}"]

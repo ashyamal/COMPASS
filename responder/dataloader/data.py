@@ -103,7 +103,6 @@ class TCGAData(Dataset):
         yp = ya.clone()
         yn = self.y[neg_idx]
 
-        
         xn = self.augmentor.augment_n(n)[0]
 
         x = [xa, xp, xn]

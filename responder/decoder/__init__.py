@@ -1,1 +1,1 @@
-from .decoder import ClassDecoder, RegDecoder
+from .decoder import ClassDecoder, RegDecoder, SoftmaxClassifier

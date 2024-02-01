@@ -10,7 +10,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 class TripletLoss(nn.Module):
     def __init__(self, margin=1.0, metric = 'cosine'):
         super(TripletLoss, self).__init__()
@@ -62,7 +61,6 @@ class TriSimplexLoss(nn.Module):
         sim_a = self._pairwise_cosine_sim(a)
         sim_a_emb = self._pairwise_cosine_sim(a_emb)
 
-        
         loss = F.mse_loss(sim_a, sim_a_emb)
         return loss
 
@@ -119,7 +117,55 @@ class CEWithNaNLabelsLoss(nn.Module):
             return torch.tensor(0.0, device=labels.device, dtype=labels.dtype)
 
 
+def entropy_regularization(probs):
+    """
+    Compute the entropy of a probability distribution.
 
+    Parameters:
+    probs (torch.Tensor): The probability distribution output by softmax.
+
+    Returns:
+    torch.Tensor: The entropy of the probability distribution.
+    """
+    # Calculate the entropy for each distribution
+    entropy = -torch.sum(probs * torch.log(probs + 1e-10), dim=1)  # add a small value to prevent log(0)
+    # Return the mean entropy across all distributions
+    return torch.mean(entropy)
+
+
+def reference_gene_cv_loss(data, epsilon = 1e-6):
+    """
+    Calculate the Coefficient of Variation (CV) loss for reference genes.
+    
+    data: Input data, expected to be a 3D tensor with dimensions [B, R, C]
+          where B is batch size, R is the number of reference genes, 
+          and C is the embedding dimension for each reference gene.
+    """
+    # Calculating mean and standard deviation along the batch dimension
+    mean = torch.mean(data, dim=0)
+    std = torch.std(data, dim=0)
+
+    # Avoid division by zero
+    cv = std / (torch.abs(mean) + epsilon)
+
+    # The CV loss is the average of the CVs across all genes and embedding dimensions
+    loss = torch.mean(cv)
+    return loss
+
+def reference_gene_variance_loss(data):
+    """
+    Calculate the loss that minimizes the variance of reference genes across samples.
+    
+    data: Input data, expected to be a 3D tensor with dimensions [B, R, C]
+          where B is batch size, R is the number of reference genes, 
+          and C is the embedding dimension for each reference gene.
+    """
+    # Calculating variance along the batch dimension
+    variance = torch.var(data, dim=0)
+
+    # The loss is the average of the variances across all genes and embedding dimensions
+    loss = torch.mean(variance)
+    return loss
 
 class SupConLoss(nn.Module):
     """Supervised Contrastive Learning: https://arxiv.org/pdf/2004.11362.pdf.

@@ -390,7 +390,7 @@ class PerformerAttention(nn.Module):
         dim,
         causal = False,
         heads = 8,
-        dim_head = 64,
+        dim_head = 32,
         local_heads = 0,
         local_window_size = 256,
         nb_features = None,
@@ -405,7 +405,9 @@ class PerformerAttention(nn.Module):
         assert dim % heads == 0, 'dimension must be divisible by number of heads'
         dim_head = default(dim_head, dim // heads)
         inner_dim = dim_head * heads
-        self.fast_attention = FastAttention(dim_head, nb_features, causal = causal, generalized_attention = generalized_attention, kernel_fn = kernel_fn, no_projection = no_projection)
+        self.fast_attention = FastAttention(dim_head, nb_features, causal = causal, 
+                                            generalized_attention = generalized_attention, 
+                                            kernel_fn = kernel_fn, no_projection = no_projection)
 
         self.heads = heads
         self.global_heads = heads - local_heads
