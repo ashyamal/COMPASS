@@ -52,8 +52,8 @@ def worker_init_fn(worker_id):
     np.random.seed(seed)
 
 
-def loadresponder(file):   
-    responder = load(file)
+def loadresponder(file, **kwargs):   
+    responder = torch.load(file, **kwargs)
     if responder.with_wandb:
         responder.wandb._settings = ''
     return responder
@@ -83,7 +83,8 @@ class PreTrainer:
                 transformer_num_layers = 1,
                 transformer_nhead = 2,
                 transformer_pos_emb = 'learnable',
-                batch_correction = False,
+                
+                batch_correction = 0.0,
                 proj_level = 'cellpathway',
                 proj_pid = False,
                 proj_cancer_type = True,
@@ -242,7 +243,7 @@ class PreTrainer:
         self.feature_name = train_tcga.feature_name
         
         train_loader = data.DataLoader(train_tcga, batch_size=self.batch_size, 
-                                       shuffle = True, worker_init_fn = worker_init_fn,
+                                        shuffle = True, worker_init_fn = worker_init_fn,
                                         drop_last=True, pin_memory=True, num_workers=4)
         
         input_dim = len(train_tcga.feature_name)
@@ -276,14 +277,16 @@ class PreTrainer:
         patience_counter = 0  
         for epoch in range(self.epochs):
             train_total_loss, train_ssl_loss, train_tsk_loss = Trainer(train_loader, self.model, self.optimizer, 
-                                                                     self.ssl_loss, self.tsk_loss, self.device, 
-                                                                     alpha = self.task_loss_weight, 
-                                                                       correction = self.batch_correction)
+                                                                        self.ssl_loss, self.tsk_loss, self.device, 
+                                                                        alpha = self.task_loss_weight, 
+                                                                        correction = self.batch_correction)
 
             if test_loader is not None:
                 test_total_loss, test_ssl_loss, test_tsk_loss = Tester(test_loader, self.model, self.ssl_loss, 
-                                                                     self.tsk_loss, self.device, 
-                                                                     alpha =self.task_loss_weight)
+                                                                        self.tsk_loss, self.device, 
+                                                                        alpha = self.task_loss_weight,
+                                                                        correction = self.batch_correction)
+                
                 self.saver(test_total_loss, epoch, self.model, self.optimizer, self.scaler)
 
 
@@ -380,7 +383,7 @@ class PreTrainer:
     def save(self, mfile):
         if self.with_wandb:
             self.wandb._settings = ''
-        dump(self, mfile)
+        torch.save(self, mfile)
         print('Saving the model to %s' % mfile)
 
     def load(self, mfile):
@@ -431,7 +434,7 @@ class FineTuner:
                 task_dense_layer = [24],
                 task_batch_norms = True,
                 task_class_weight = [1, 2], 
-                batch_correction = False,
+                batch_correction = 0.0,
                 entropy_weight = 0.0,
                 seed = 42,
                 verbose = True,
@@ -447,7 +450,7 @@ class FineTuner:
         mode: tuning mode{head, partial, or full}
         '''
         
-        self.pretrainer = pretrainer
+        self.pretrainer = pretrainer.copy()
         self.scaler = self.pretrainer.scaler
         
         self.mode = mode
@@ -602,7 +605,6 @@ class FineTuner:
              dfy_test = None,
              task_name = 'rps', 
              task_type = 'f',
-             augmentation = True
             ):
 
 
@@ -613,11 +615,7 @@ class FineTuner:
         self.task_name = task_name
 
         train_itrp = ITRPData(dfcx_train, dfy_train)
-        
-        if augmentation:
-            train_itrp = TCGAData(dfcx_train, dfy_train, 
-                                  self.pretrainer.augmentor, 
-                                  K = self.pretrainer.K)
+
 
         #self.train_itrp = train_itrp
         self.y_scaler = train_itrp.y_scaler
@@ -634,10 +632,7 @@ class FineTuner:
         if dfcx_test is not None:
             dfcx_test = self.scaler.transform(dfcx_test)
             test_itrp = ITRPData(dfcx_test, dfy_test)
-            # if augmentation:
-            #     test_itrp = TCGAData(dfcx_test, dfy_test, 
-            #                           self.pretrainer.augmentor, 
-            #                           K = self.pretrainer.K)
+
             
             test_loader = data.DataLoader(test_itrp, 
                                           batch_size=self.batch_size, 
@@ -665,14 +660,14 @@ class FineTuner:
             support_labels = torch.tensor(dfy_train.values)
             self.model.taskdecoder.initialize_parameters(support_features, support_labels)
 
-
         self.input_dim = input_dim
         self.task_dim = task_dim
 
         ### training ###
         performace = []
 
-        best_val_loss = float('inf') 
+        best_val_loss = float('inf')
+        
         patience_counter = 0
         for epoch in tqdm(range(self.epochs), ascii=True):
             train_total_loss, train_ssl_loss, train_tsk_loss = Trainer(train_loader, self.model, self.optimizer, 
@@ -681,15 +676,14 @@ class FineTuner:
                                                                         correction = self.batch_correction,
                                                                         entropy_weight = self.entropy_weight,
                                                                       )
-
-            #train_f1, train_mcc, train_prc, train_roc, train_acc = Evaluator(train_loader, model, device)
             
+            #train_f1, train_mcc, train_prc, train_roc, train_acc = Evaluator(train_loader, model, device)
             if test_loader is not None:
-                
                 #test_f1, test_mcc, test_prc, test_roc, test_acc = Evaluator(test_loader, model, device)
                 test_total_loss, test_ssl_loss, test_tsk_loss = Tester(test_loader, self.model, self.ssl_loss, 
-                                                                     self.tsk_loss, self.device, 
-                                                                     alpha =self.task_loss_weight,
+                                                                        self.tsk_loss, self.device, 
+                                                                        alpha =self.task_loss_weight,
+                                                                        correction = 0.0,
                                                                       )
                 self.saver(test_total_loss, epoch, self.model, self.optimizer, self.scaler)
 
@@ -785,7 +779,7 @@ class FineTuner:
     def save(self, mfile):
         if self.with_wandb:
             self.wandb._settings = ''
-        dump(self, mfile)
+        torch.save(self, mfile)
         print('Saving the model to %s' % mfile)
 
     def load(self, mfile):
