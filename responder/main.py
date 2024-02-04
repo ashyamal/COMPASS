@@ -386,8 +386,8 @@ class PreTrainer:
         torch.save(self, mfile)
         print('Saving the model to %s' % mfile)
 
-    def load(self, mfile):
-        self = load(mfile)
+    def load(self, mfile, **kwargs):
+        self = loadresponder(mfile, **kwargs)
         if self.with_wandb:
             self.wandb._settings = ''
         return self
@@ -655,7 +655,17 @@ class FineTuner:
         ## init the taskdecoder
         if task_type == 'f':
             ## claculate the support set features
-            dfcx_train_emb, _ = self.pretrainer.predict(dfcx_train, batch_size=128)
+            pretrainer = self.pretrainer
+            dfcx_train_emb, _ = pretrainer.predict(dfcx_train, batch_size=128)
+            if pretrainer.model.proj_level == 'cellpathway':
+                a = pretrainer.model.celltype_feature_name
+                k = pretrainer.model.ref_celltype_ids
+            else:
+                a = pretrainer.model.geneset_feature_name
+                k = pretrainer.model.ref_geneset_ids
+            proj_feature_names = [a[i] for i in range(len(a)) if i not in k]
+            
+            dfcx_train_emb = dfcx_train_emb[proj_feature_names]
             support_features = torch.tensor(dfcx_train_emb.values)
             support_labels = torch.tensor(dfy_train.values)
             self.model.taskdecoder.initialize_parameters(support_features, support_labels)
@@ -782,8 +792,8 @@ class FineTuner:
         torch.save(self, mfile)
         print('Saving the model to %s' % mfile)
 
-    def load(self, mfile):
-        self = load(mfile)
+    def load(self, mfile, **kwargs):
+        self = loadresponder(mfile, **kwargs)
         if self.with_wandb:
             self.wandb._settings = ''
         return self
