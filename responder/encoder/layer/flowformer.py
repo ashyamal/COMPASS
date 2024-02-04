@@ -171,9 +171,8 @@ class FlowformerLayer(nn.Module, AbstractTrasnformerLayer):
         self.support_output_attentions = False
 
     def _sa_block(self, x):
-        #x = x.unsqueeze(0)
         x = self.self_attn(x)
-        return self.dropout1(x)#[0, :, :]
+        return self.dropout1(x)
 
     def forward(self, x, attn_mask=None, output_attentions=False):
         assert output_attentions == False, 'output_attentions not implemented for Cosformer'
@@ -183,4 +182,4 @@ class FlowformerLayer(nn.Module, AbstractTrasnformerLayer):
         else:
             x = self.norm1(x + self._sa_block(x))
             x = self.norm2(x + self._ff_block(x))
-        return x
+        return x, None

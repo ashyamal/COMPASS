@@ -468,8 +468,8 @@ class PerformerLayer(nn.Module, AbstractTrasnformerLayer):
             embed_dim,
             num_heads,
             dropout = 0.0,
-            norm = 'rmsnorm',
-            norm_first: bool = True,
+            norm = 'layernorm',
+            norm_first: bool = False,
             causal=False,
     ):
         super().__init__()
@@ -481,27 +481,29 @@ class PerformerLayer(nn.Module, AbstractTrasnformerLayer):
                                             nn.Linear(embed_dim*2, embed_dim),
                                             nn.Dropout(dropout),
                                         )
+        
         self.dropout1 = nn.Dropout(dropout)
+        self.norm = norm
         self.norm1 = create_norm(norm, embed_dim)
         self.norm2 = create_norm(norm, embed_dim)
         self.norm_first = norm_first
         self.support_output_attentions = True
 
-    def _sa_block(self, x: Tensor, attn_mask: Optional[Tensor]):
+    def _sa_block(self, x: Tensor, output_attentions = False):
         #x = x.unsqueeze(0)
-        out, attn_weights = self.self_attn(x, attn_mask=attn_mask)
+        out, attn_weights = self.self_attn(x, output_attentions = output_attentions)
         return out, attn_weights
 
-    def forward(self, x, attn_mask=None, output_attentions=False):
+    def forward(self, x, output_attentions=False):
+        #print(x.shape)
         if self.norm_first:
-            x_prime, attn = self._sa_block(self.norm1(x), attn_mask)
+            x_prime, attn = self._sa_block(x = self.norm1(x), 
+                                           output_attentions = output_attentions)
             x = x + x_prime
             x = x + self._ff_block(self.norm2(x))
         else:
-            x_prime, attn = self._sa_block(x, attn_mask)
+            x_prime, attn = self._sa_block(x, output_attentions = output_attentions)
             x = self.norm1(x + x_prime)
             x = self.norm2(x + self._ff_block(x))
-        if output_attentions:
-            return x, attn
-        else:
-            return x
+
+        return x, attn

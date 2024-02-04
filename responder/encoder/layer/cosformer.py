@@ -202,5 +202,5 @@ class CosformerLayer(nn.Module, AbstractTrasnformerLayer):
 
         x_out = x.transpose(0, 1)
 
-        return x_out
+        return x_out, None
 

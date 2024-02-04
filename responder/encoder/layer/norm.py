@@ -62,7 +62,10 @@ def create_norm(name, n, h=4):
         return nn.BatchNorm1d(n)
     elif name == "groupnorm":
         return nn.GroupNorm(h, n)
+    elif name == "instancenorm":
+        return nn.instancenorm1d(n)
     elif name == 'rmsnorm':
         return RMSNorm(n)
     else:
+        #print('Encoder without norm!')
         return nn.Identity()

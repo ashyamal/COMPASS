@@ -11,9 +11,10 @@ from torch.nn.modules.container import ModuleList
 from torchvision.ops import MLP
 
 import copy, torch
-from .layer import CosformerLayer, PerformerLayer, VanillaTransformerLayer, FlowformerLayer
+from .layer import CosformerLayer, PerformerLayer, FlowformerLayer
+from .layer import VanillaTransformerLayer, FlashTransformerLayer
 from ..embedder import GeneEmbedding, _GeneInitialization
-#from .layer import  FlashTransformerEncoderLayer
+
 from .layer.norm import create_norm
 
 def _get_clones(module, N):
@@ -24,7 +25,7 @@ def _get_clones(module, N):
 class Encoder(nn.Module):
 
     def __init__(self, encoder_type= 'transformer', d_model = 32, dim_feedforward = 64,
-                 nhead = 2, num_layers = 1, dropout = 0, norm = None, **kwargs):
+                 nhead = 2, num_layers = 1, dropout = 0,  **kwargs):
         
         super(Encoder, self).__init__()
         
@@ -34,12 +35,6 @@ class Encoder(nn.Module):
         self.num_layers = num_layers
         self.dim_head = d_model // nhead  #16
         self.dropout = dropout
-        
-        self.norm = norm
-
-        if self.norm is not None:
-            self._norm = create_norm('layernorm', d_model)
-
 
         if encoder_type == 'cosformer':
             encoder_layer = CosformerLayer(embed_dim=d_model, 
@@ -62,14 +57,14 @@ class Encoder(nn.Module):
                                                       **kwargs
                                                       )
 
-        # elif encoder_type == 'flashformer':
-        #     encoder_layer = FlashTransformerEncoderLayer(d_model=d_model, 
-        #                                                nhead=nhead,
-        #                                                dropout=dropout, 
-        #                                                dim_feedforward = dim_feedforward,
-        #                                                batch_first = True,
-        #                                               **kwargs
-        #                                               ).half()
+        elif encoder_type == 'flashformer':
+            encoder_layer = FlashTransformerLayer(d_model=d_model, 
+                                                       nhead=nhead,
+                                                       dropout=dropout, 
+                                                       dim_feedforward = dim_feedforward,
+                                                       batch_first = True,
+                                                      **kwargs
+                                                      )
         
         else:
             raise NotImplementedError(f'Not implemented transformer type: {encoder_type}')
@@ -82,19 +77,14 @@ class Encoder(nn.Module):
 
         att_list = []
         for l in range(self.num_layers):
-            if output_attentions:
-                x, att = self.layers[l](x, output_attentions=output_attentions)
-                att_list.append(att)
-            else:
+            if self.encoder_type == 'transformer':
                 x = self.layers[l](x)
+                att = None
+            else:
+                x, att = self.layers[l](x, output_attentions=output_attentions)
+            att_list.append(att)
 
-        if self.norm is not None:
-            x = self._norm(x)
-            
-        if output_attentions:
-            return x, att_list
-        else:
-            return x
+        return x, att_list
 
 
 
@@ -134,7 +124,7 @@ class TransformerEncoder(nn.Module):
                                dim_feedforward = dim_feedforward,
                                nhead = nhead, num_layers = num_layers, **kwargs)
 
-    def forward(self, x):
+    def forward(self, x, output_attentions = False):
 
         cancer_types = x[:, 0].long()  #first column is the cancer type
         genes = x[:, 1:]  # 
@@ -149,8 +139,12 @@ class TransformerEncoder(nn.Module):
         # concat dataset_embed,cancer_embed,
         transformer_input = torch.cat([pid_embed, cancer_embed, gene_embed], dim=1) # B, L+2, C
 
-        x = self.encoder(transformer_input)
-        return x
+        x, attn = self.encoder(transformer_input, output_attentions = output_attentions)
+        
+        if output_attentions:
+            return x, attn
+        else:
+            return x
 
 
 

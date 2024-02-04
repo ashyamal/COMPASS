@@ -8,16 +8,12 @@ from torch import nn, Tensor
 # import torch.distributed as dist
 import torch.nn.functional as F
 from torch.nn import TransformerEncoder, TransformerEncoderLayer
-# from torch.distributions import Bernoulli
-# from tqdm import trange
 
+from .norm import create_norm, create_activation
+from .FlashMultiHead import FlashMHA
 
-#from flash_attn.flash_attention import FlashMHA
-from .flash_attention import FlashAttention
-
-
-class FlashTransformerEncoderLayer(nn.Module):
-    r"""TransformerEncoderLayer is made up of self-attn and feedforward network.
+class FlashTransformerLayer(nn.Module):
+    r"""FlashTransformerLayer is made up of self-attn and feedforward network.
     The class is modified from torch.nn.TransformerEncoderLayer to support the
     FlashAttention.
 
@@ -47,89 +43,71 @@ class FlashTransformerEncoderLayer(nn.Module):
         self,
         d_model,
         nhead,
-        dim_feedforward=2048,
+        dim_feedforward=128,
         dropout=0.1,
         activation="relu",
         layer_norm_eps=1e-5,
-        batch_first=True,
+        norm = 'layernorm',  #batchnorm, layernorm, rmsnorm
+        norm_first = True,
+        batch_first = True,
+        flash = False,
         device=None,
-        dtype=None,
-        norm_scheme="post",  # "pre" or "post"
-    ) -> None:
-        factory_kwargs = {"device": device, "dtype": dtype}
+        dtype=None) -> None:
+
         super().__init__()
+
+        self.flash = flash
+        self.device = device
+        self.dtype = dtype
+        self.norm = norm
+        
         self.self_attn = FlashMHA(
             embed_dim=d_model,
             num_heads=nhead,
             batch_first=batch_first,
-            attention_dropout=dropout,
-            **factory_kwargs,
-        )
+            dropout=dropout,
+            causal=False, device=device, dtype=dtype, flash=flash)
+
+        factory_kwargs = {'device': device, 'dtype': dtype}
+        #print(factory_kwargs)
+        
         # Implementation of Feedforward model
         self.linear1 = nn.Linear(d_model, dim_feedforward, **factory_kwargs)
         self.dropout = nn.Dropout(dropout)
         self.linear2 = nn.Linear(dim_feedforward, d_model, **factory_kwargs)
+        self.norm_first = norm_first
 
-        self.norm1 = nn.LayerNorm(d_model, eps=layer_norm_eps, **factory_kwargs)
-        self.norm2 = nn.LayerNorm(d_model, eps=layer_norm_eps, **factory_kwargs)
+        self.norm1 = create_norm(norm, d_model)
+        self.norm2 = create_norm(norm, d_model)
+        
         self.dropout1 = nn.Dropout(dropout)
         self.dropout2 = nn.Dropout(dropout)
 
-        self.activation = self._get_activation_fn(activation)
-        self.norm_scheme = norm_scheme
-        if self.norm_scheme not in ["pre", "post"]:
-            raise ValueError(f"norm_scheme should be pre or post, not {norm_scheme}")
+        self.activation = create_activation(activation)
 
-    @staticmethod
-    def _get_activation_fn(activation):
-        if activation == "relu":
-            return F.relu
-        elif activation == "gelu":
-            return F.gelu
+    # 自注意力 block
+    def _sa_block(self, x, need_weights = False) :
+        x, attn = self.self_attn(x, x, x, need_weights = need_weights)
+        return self.dropout1(x), attn
 
-        raise RuntimeError("activation should be relu/gelu, not {}".format(activation))
-
-    def __setstate__(self, state):
-        if "activation" not in state:
-            state["activation"] = F.relu
-        super().__setstate__(state)
-
-    def forward(
-        self,
-        src: Tensor,
-        src_mask: Optional[Tensor] = None,
-        src_key_padding_mask: Optional[Tensor] = None,
-        **kwargs,
-    ) -> Tensor:
-        r"""Pass the input through the encoder layer.
-
-        Args:
-            src: the sequence to the encoder layer (required).
-            src_mask: the mask for the src sequence (optional).
-            src_key_padding_mask: the mask for the src keys per batch (optional).
-
-        Shape:
-            see the docs in Transformer class.
-        """
-        if src_mask is not None:
-            raise ValueError("FlashTransformerEncoderLayer does not support src_mask")
-
-        src_key_padding_mask_ = None
+    
+    # 前馈网络 block
+    def _ff_block(self, x: Tensor) -> Tensor:
+        x = self.linear2(self.dropout(self.activation(self.linear1(x))))
+        return self.dropout2(x)
 
 
-        if self.norm_scheme == "pre":
-            src = self.norm1(src)
-            src2 = self.self_attn(src, key_padding_mask=src_key_padding_mask_)[0]
-            src = src + self.dropout1(src2)
-            src = self.norm2(src)
-            src2 = self.linear2(self.dropout(self.activation(self.linear1(src))))
-            src = src + self.dropout2(src2)
+
+    def forward(self, x, output_attentions=False):
+        if self.norm_first:
+            x_prime, attn = self._sa_block(self.norm1(x), need_weights = output_attentions)
+            x = x + x_prime
+            x = x + self._ff_block(self.norm2(x))
         else:
-            src2 = self.self_attn(src, key_padding_mask=src_key_padding_mask_)[0]
-            src = src + self.dropout1(src2)
-            src = self.norm1(src)
-            src2 = self.linear2(self.dropout(self.activation(self.linear1(src))))
-            src = src + self.dropout2(src2)
-            src = self.norm2(src)
+            x_prime, attn = self._sa_block(x, need_weights = output_attentions)
+            x = self.norm1(x + x_prime)
+            x = self.norm2(x + self._ff_block(x))
 
-        return src
+        return x, attn
+
+        
