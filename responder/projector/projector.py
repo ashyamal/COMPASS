@@ -1,7 +1,9 @@
-
 from .cellpathwayaggregator import CellPathwayAggregator
 from .genesetaggregator import GeneSetAggregator
 from .genesetscorer import GeneSetScorer
+from ..tokenizer import CONCEPT, TOKENS_SHORT, TOKENS_LONG
+
+
 
 
 import torch, math
@@ -13,9 +15,8 @@ import numpy as np
 
 
 
+
 cwd = os.path.dirname(__file__)
-
-
 
 
 
@@ -69,7 +70,6 @@ class DisentangledProjector(nn.Module):
     def __init__(self, 
                  gene_num,
                  gene_feature_dim,
-
                  proj_pid = True, 
                  proj_cancer_type = True,
                  
@@ -79,8 +79,28 @@ class DisentangledProjector(nn.Module):
         
         super(DisentangledProjector, self).__init__()
 
-        GENESET = pd.read_pickle(os.path.join(cwd, str(gene_num), 'GENESET.DATA'))
-        CELLPATHWAY = pd.read_pickle(os.path.join(cwd, str(gene_num), 'CELLTYPE.DATA'))
+        TOKENS = TOKENS_LONG if len(TOKENS_LONG) == gene_num+2 else TOKENS_SHORT
+        TOKEN_IDX_MAP = pd.Series(TOKENS).reset_index().set_index(0)['index'].astype(int).to_dict()
+        
+        def _genes_to_idxs(genes):
+            TOKEN_IDX_MAP
+            gene_idxs = []
+            for i in genes.split(':'):
+                idx = TOKEN_IDX_MAP.get(i)
+                if idx != None:
+                    gene_idxs.append(idx)
+            return gene_idxs
+        
+        GENESET = CONCEPT.Genes.apply(_genes_to_idxs)
+        CELLPATHWAY = CONCEPT.reset_index().groupby('CelltypePathway').apply(lambda x:x.index.tolist())
+
+        assert 'Reference' in CELLPATHWAY.index, 'Reference must in CELLPATHWAY!'
+        # Move 'Reference' to the end
+        noref = CELLPATHWAY[CELLPATHWAY.index != 'Reference']
+        ref = CELLPATHWAY[CELLPATHWAY.index == 'Reference']
+        CELLPATHWAY = noref._append(ref)
+
+        
         self.GENESET = GENESET
         self.CELLPATHWAY = CELLPATHWAY
 
@@ -90,13 +110,6 @@ class DisentangledProjector(nn.Module):
         self.proj_pid = proj_pid
         self.proj_cancer_type = proj_cancer_type
 
-
-        
-        ## reference genes
-        REFGENES = []
-        for refset in GENESET.iloc[CELLPATHWAY['Reference']].to_list():
-            REFGENES.extend(refset)
-        self.REFGENES = REFGENES
 
         self.gene_num = gene_num
         self.gene_feature_dim = gene_feature_dim
@@ -130,7 +143,24 @@ class DisentangledProjector(nn.Module):
         self.cellpathway_proj_cols = cellpathway_proj_cols
         self.geneset_proj_cols = geneset_proj_cols
 
+        
+        ## reference genes
+        ref_gene_ids = []
+        for refset in GENESET.iloc[CELLPATHWAY['Reference']].to_list():
+            ref_gene_ids.extend(refset)
 
+        ## reference sets
+        ref_geneset_ids = []
+        for rgs in GENESET.iloc[CELLPATHWAY['Reference']].index:
+            idx = geneset_proj_cols.index(rgs)
+            ref_geneset_ids.append(idx)
+ 
+        ## reference cellpathways
+        ref_celltype_ids = [cellpathway_proj_cols.index('Reference')]
+
+        self.ref_gene_ids = ref_gene_ids
+        self.ref_celltype_ids = ref_celltype_ids
+        self.ref_geneset_ids = ref_geneset_ids
 
     
     def forward(self, x):
