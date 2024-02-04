@@ -5,6 +5,7 @@ Created on Fri Nov  3 13:31:25 2023
 @author: Wanxiang Shen
 
 """
+import torch
 import torch.nn as nn
 from ..encoder import TransformerEncoder, MLPEncoder
 from ..decoder import ClassDecoder, RegDecoder, SoftmaxClassifier
@@ -90,20 +91,26 @@ class Responder(nn.Module):
 
             self.geneset_feature_name = self.latentprojector.geneset_proj_cols
             self.celltype_feature_name = self.latentprojector.cellpathway_proj_cols
-            self.ref_genes = self.latentprojector.REFGENES
-            
-            if  proj_level == 'cellpathway':
-                self.embed_dim = len(self.celltype_feature_name)
-                self.embed_feature_names = self.celltype_feature_name
-            else:
-                self.embed_dim = len(self.geneset_feature_name)
-                self.embed_feature_names = self.geneset_feature_name
+            self.ref_gene_ids = self.latentprojector.ref_gene_ids
+            self.ref_geneset_ids = self.latentprojector.ref_geneset_ids
+            self.ref_celltype_ids = self.latentprojector.ref_celltype_ids
 
+            if  proj_level == 'cellpathway':
+                a = self.celltype_feature_name
+                k = self.ref_celltype_ids
+            else:
+                a = self.geneset_feature_name
+                k = self.ref_geneset_ids
+
+            self.embed_dim = len(a) - len(k)
+            self.embed_feature_names = a
+            self.proj_feature_names = [a[i] for i in range(len(a)) if i not in k]
+            
         else:
             self.latentprojector = EntangledProjector(transformer_dim)
             self.embed_feature_names = range(len(embed_dim))
             self.embed_dim = embed_dim
-
+            self.proj_feature_names = self.embed_feature_names
 
         
         model_args = {'input_dim':self.input_dim, 
@@ -156,21 +163,34 @@ class Responder(nn.Module):
     def forward(self, x):
 
         #output： B,L+2, (dataset:1, cancer:1, gene),C
-        encoding = self.inputencoder(x) 
+        encoding = self.inputencoder(x)
+        
         geneset_level_proj, cellpathway_level_proj = self.latentprojector(encoding)
         
         # task_inputs: only input the context-oriented features (for downstream task)
         # Embedding: embeddings for contrastive learning
         if self.proj_level == 'geneset':
-            embedding = geneset_level_proj
-
+            embedding = geneset_level_proj #B,L
+            emb_ref = embedding[:, self.ref_geneset_ids]
+            
+            mask = torch.ones(embedding.shape[1], dtype=torch.bool)
+            mask[self.ref_geneset_ids] = False
+            emb_used = embedding[:, mask]
+            
         elif self.proj_level == 'cellpathway':
-            embedding = cellpathway_level_proj
+            embedding = cellpathway_level_proj #B,L
+            emb_ref = embedding[:, self.ref_celltype_ids]
+            
+            mask = torch.ones(embedding.shape[1], dtype=torch.bool)
+            mask[self.ref_celltype_ids] = False
+            emb_used = embedding[:, mask]
 
         
-        y = self.taskdecoder(embedding)
+        y = self.taskdecoder(emb_used)
 
         gene_encoding = encoding[:, 2:, :]
-        refgene_encoding = gene_encoding[:, self.ref_genes, :]
+        gene_ref = gene_encoding[:, self.ref_gene_ids, :]
 
-        return (embedding, refgene_encoding), y
+        return (embedding, (gene_ref, emb_ref)), y
+
+

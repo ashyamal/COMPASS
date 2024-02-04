@@ -133,39 +133,55 @@ def entropy_regularization(probs):
     return torch.mean(entropy)
 
 
-def reference_gene_cv_loss(data, epsilon = 1e-6):
-    """
-    Calculate the Coefficient of Variation (CV) loss for reference genes.
+
+
+def reference_gene_loss(reference_representations):
+    '''
+    To minimize the differences in representations of reference () genes across samples.
+    Reasons: ubiquitously expressed genes are refer to genes that are consistently expressed across different samples, tissues, cell types, 
+    and conditions. Similar to housekeeping genes, ubiquitously expressed genes provide essential cellular functions necessary for the maintenance 
+    and survival of cells. They are expressed at stable levels, making them useful as reference points or controls in gene expression studies, 
+    including quantitative PCR and RNA sequencing analyses, to ensure accurate normalization and comparison across samples.
+
+    While absolute expression levels might not match perfectly across all individuals due to biological variability, 
+    technical factors, and sensitivity of measurement techniques, 
+    the expression levels of UEGs should be relatively consistent and close to each other among different people. 
+    This consistency makes UEGs reliable for comparative studies and normalization in gene expression analyses.
+    '''
     
-    data: Input data, expected to be a 3D tensor with dimensions [B, R, C]
-          where B is batch size, R is the number of reference genes, 
-          and C is the embedding dimension for each reference gene.
+    mean_ref = torch.mean(reference_representations, dim=0)
+    std_ref = torch.std(reference_representations, dim=0)
+    # 使用平均值的绝对值
+    cv = std_ref / (torch.abs(mean_ref) + 1e-6)
+    cv_loss = cv.mean()
+    return cv_loss
+
+
+def reference_gene_loss2(expression_levels):
     """
-    # Calculating mean and standard deviation along the batch dimension
-    mean = torch.mean(data, dim=0)
-    std = torch.std(data, dim=0)
+    Minimize variance in expression levels of reference genes across samples.
 
-    # Avoid division by zero
-    cv = std / (torch.abs(mean) + epsilon)
+    Parameters:
+    expression_levels (torch.Tensor): Tensor of shape [num_samples, num_genes]
+                                      representing expression levels of genes across samples.
 
-    # The CV loss is the average of the CVs across all genes and embedding dimensions
-    loss = torch.mean(cv)
+    Returns:
+    torch.Tensor: Scalar loss value.
+    """
+    # Calculate the mean expression level for each gene across samples
+    mean_expression = torch.mean(expression_levels, dim=0, keepdim=True)
+    
+    # Calculate the mean squared difference from the mean expression level for each gene
+    squared_diffs = (expression_levels - mean_expression) ** 2
+    
+    # Average the squared differences across all genes and samples
+    loss = torch.mean(squared_diffs)
+    
     return loss
 
-def reference_gene_variance_loss(data):
-    """
-    Calculate the loss that minimizes the variance of reference genes across samples.
-    
-    data: Input data, expected to be a 3D tensor with dimensions [B, R, C]
-          where B is batch size, R is the number of reference genes, 
-          and C is the embedding dimension for each reference gene.
-    """
-    # Calculating variance along the batch dimension
-    variance = torch.var(data, dim=0)
 
-    # The loss is the average of the variances across all genes and embedding dimensions
-    loss = torch.mean(variance)
-    return loss
+
+
 
 class SupConLoss(nn.Module):
     """Supervised Contrastive Learning: https://arxiv.org/pdf/2004.11362.pdf.

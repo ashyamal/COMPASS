@@ -12,9 +12,8 @@ from tqdm import tqdm
 tqdm.pandas(ascii=True)
 
 from ..dataloader import GeneData
-from .loss import reference_gene_cv_loss, reference_gene_variance_loss, entropy_regularization
+from .loss import reference_gene_loss, entropy_regularization
 
-reference_gene_loss = reference_gene_variance_loss
 
 def worker_init_fn(worker_id):
     seed = torch.initial_seed() % 2**32
@@ -22,14 +21,14 @@ def worker_init_fn(worker_id):
 
 
 
-
 def Trainer(train_loader, model, 
             optimizer, ssl_loss, 
             tsk_loss, device, 
             alpha=0.0, 
-            correction = False, 
+            correction = 0.0, 
             entropy_weight = 0.0):
-    
+
+
     model.train()
     total_loss = []
     total_ssl_loss = []
@@ -57,23 +56,23 @@ def Trainer(train_loader, model,
 
         lss = ssl_loss(anchor_emb, positive_emb, negative_emb)
 
-        if correction:
-            refg = torch.cat([anchor_refg, positive_refg, negative_refg])
-            ref = reference_gene_loss(refg)
-    
-            #print("Ref: {:.2f} - CL: {:.4f}".format(ref.item(), lss.item()))
-            lss = (lss + ref) / 2
+        ## remove batch effects by minimal the differences between house-keeping genes
+        if correction != 0 :
+            refg = torch.cat([anchor_refg[0], positive_refg[0], negative_refg[0]], axis=0)
+            refe = torch.cat([anchor_refg[1], positive_refg[1], negative_refg[1]], axis=0)
+            
+            ref = reference_gene_loss(refe) #reference_gene_loss(refg) + reference_gene_loss(refe)
+            #print("Ref-g: {:.2f} - Ref-s: {:.2f}".format(reference_gene_loss(refg).item(), reference_gene_loss(refe).item()))
+            lss = (1-correction)*lss + correction*ref
 
+        y_pred = anchor_y_pred #torch.cat([anchor_y_pred, positive_y_pred, negative_y_pred])
+        y_true = anchor_y_true #torch.cat([anchor_y_true, positive_y_true, negative_y_true])
+        tsk = tsk_loss(y_pred, y_true)
+        
         if entropy_weight != 0 :
-            entropy_reg  = entropy_regularization(anchor_y_pred)
-            tsk = tsk_loss(anchor_y_pred, anchor_y_true)
+            entropy_reg  = entropy_regularization(y_pred)
             tsk = tsk * (1-entropy_weight) + entropy_reg * entropy_weight
-        else:
-            tsk = tsk_loss(anchor_y_pred, anchor_y_true)
 
-        # y_pred = torch.cat([anchor_y_pred, positive_y_pred, negative_y_pred])
-        # y_true = torch.cat([anchor_y_true, positive_y_true, negative_y_true])
-        #tsk = tsk_loss(y_pred, y_true)
         
         loss = (1 - alpha) * lss + alpha * tsk
         
@@ -96,7 +95,7 @@ def Trainer(train_loader, model,
 
 @torch.no_grad()
 def Tester(test_loader, model, ssl_loss, tsk_loss, 
-           device, alpha=1.):
+           device, alpha=1., correction = 0):
     model.eval()
     total_loss = []
     total_ssl_loss = []
@@ -119,17 +118,23 @@ def Tester(test_loader, model, ssl_loss, tsk_loss,
         (positive_emb, positive_refg), positive_y_pred = model(positive)
         (negative_emb, negative_refg), negative_y_pred = model(negative)
 
-
         lss = ssl_loss(anchor_emb, positive_emb, negative_emb)
-
-
-        tsk = tsk_loss(anchor_y_pred, anchor_y_true)
-        # y_pred = torch.cat([anchor_y_pred, positive_y_pred, negative_y_pred])
-        # y_true = torch.cat([anchor_y_true, positive_y_true, negative_y_true])
-        # tsk = tsk_loss(y_pred, y_true)
+        
+        if correction != 0 :
+            refg = torch.cat([anchor_refg[0], positive_refg[0], negative_refg[0]], axis=0)
+            refe = torch.cat([anchor_refg[1], positive_refg[1], negative_refg[1]], axis=0)
+            
+            ref = reference_gene_loss(refe) #reference_gene_loss(refg) + reference_gene_loss(refe)
+            #print("Ref-g: {:.2f} - Ref-s: {:.2f}".format(reference_gene_loss(refg).item(), reference_gene_loss(refe).item()))
+            lss = (1-correction)*lss + correction*ref
+            
+        y_pred = anchor_y_pred  #torch.cat([anchor_y_pred, positive_y_pred, negative_y_pred], dim = 0)
+        y_true = anchor_y_true #torch.cat([anchor_y_true, positive_y_true, negative_y_true], dim = 0)
+        tsk = tsk_loss(y_pred, y_true)
+        
 
         loss = (1.-alpha)*lss + tsk*alpha
-                
+
         total_loss.append(loss.item())
         total_ssl_loss.append(lss.item())
         total_tsk_loss.append(tsk.item())
@@ -220,6 +225,8 @@ def Predictor(dfcx, model, scaler, device = 'cpu', batch_size=512,  num_workers=
     dfp = pd.DataFrame(predictions, index = predict_tcga.patient_name)
 
     return dfe, dfp
+
+
 
 
 
