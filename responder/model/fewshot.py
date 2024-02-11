@@ -86,7 +86,7 @@ class PrototypeNetNoFT:
         '''
         query_set: the last column is the RECIST label column
         '''
-        recist_col = support_set.columns[-1]
+        recist_col = self.recist_col
         assert recist_col == self.recist_col, '%s is missing!' % self.recist_col
 
         query_set_features = torch.tensor(query_set[self.feature_col].values)
