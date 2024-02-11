@@ -119,8 +119,9 @@ class DisentangledProjector(nn.Module):
         self.genesetprojector = GeneSetProjector(GENESET, self.gene_feature_dim, self.geneset_agg_mode, self.geneset_score_mode)
         self.cellpathwayprojector = CellPathwayProjector(CELLPATHWAY, self.cellpathway_agg_mode)
 
-        self.cancerprojector = GeneSetScorer(self.gene_feature_dim, 'linear')
         self.patientprojector = GeneSetScorer(self.gene_feature_dim, 'linear')
+        self.cancerprojector = GeneSetScorer(self.gene_feature_dim, 'linear')
+
 
         if proj_pid and proj_cancer_type:
             PROJCOLS = ['PID', 'CANCER']
