@@ -185,12 +185,12 @@ class Responder(nn.Module):
             mask[self.ref_celltype_ids] = False
             emb_used = embedding[:, mask]
 
-        
+
         y = self.taskdecoder(emb_used)
 
         gene_encoding = encoding[:, 2:, :]
         gene_ref = gene_encoding[:, self.ref_gene_ids, :]
 
-        return (embedding, (gene_ref, emb_ref)), y
+        return (emb_used, (gene_ref, emb_ref)), y
 
 
