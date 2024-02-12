@@ -213,7 +213,7 @@ class PreTrainer:
               dfy_test = None, 
               task_name = 'notask', 
               task_type = 'c', 
-              aug_method = 'jitter',
+              aug_method = 'mix',
               scale_method = 'minmax', **augargs):
 
 
