@@ -133,9 +133,22 @@ def entropy_regularization(probs):
     return torch.mean(entropy)
 
 
+def reference_consistency_loss(a, p, n, cross_triplet = True):
+    # Stack the tensors to create a [b, 3] tensor for batch operation
+    '''
+    To minimize the differences in representations of reference () genes across triplet.
+    '''
+    if cross_triplet:
+        reference_representations = torch.stack((a.squeeze(), p.squeeze(), n.squeeze()), dim=1)
+        loss = cv_loss(reference_representations, dim = 1)
+    else:
+        reference_representations = torch.cat([a, p, n], dim=0)
+        loss = cv_loss(reference_representations, dim = 0)
 
+    return loss
+    
 
-def reference_gene_loss(reference_representations):
+def cv_loss(reference_representations, dim = 0):
     '''
     To minimize the differences in representations of reference () genes across samples.
     Reasons: ubiquitously expressed genes are refer to genes that are consistently expressed across different samples, tissues, cell types, 
@@ -148,16 +161,19 @@ def reference_gene_loss(reference_representations):
     the expression levels of UEGs should be relatively consistent and close to each other among different people. 
     This consistency makes UEGs reliable for comparative studies and normalization in gene expression analyses.
     '''
-    
-    mean_ref = torch.mean(reference_representations, dim=0)
-    std_ref = torch.std(reference_representations, dim=0)
+
+    #print(reference_representations)
+    mean_ref = torch.mean(reference_representations, dim=dim)
+    std_ref = torch.std(reference_representations, dim=dim)
     # 使用平均值的绝对值
     cv = std_ref / (torch.abs(mean_ref) + 1e-6)
     cv_loss = cv.mean()
+    
     return cv_loss
 
 
-def reference_gene_loss2(expression_levels):
+def msd_loss(expression_levels, dim=0):
+    
     """
     Minimize variance in expression levels of reference genes across samples.
 
@@ -169,17 +185,32 @@ def reference_gene_loss2(expression_levels):
     torch.Tensor: Scalar loss value.
     """
     # Calculate the mean expression level for each gene across samples
-    mean_expression = torch.mean(expression_levels, dim=0, keepdim=True)
+    mean_expression = torch.mean(expression_levels, dim=dim, keepdim=True)
     
-    # Calculate the mean squared difference from the mean expression level for each gene
-    squared_diffs = (expression_levels - mean_expression) ** 2
+    # Calculate the abs difference from the mean expression level for each gene
+    diffs = torch.abs(expression_levels - mean_expression) #**2
     
     # Average the squared differences across all genes and samples
-    loss = torch.mean(squared_diffs)
+    loss = torch.mean(diffs)
     
     return loss
 
 
+def independence_loss(x, y):
+    """
+    a loss function that penalizes correlation between x and y.
+    """
+    y_binary = torch.argmax(y, dim=1).float()
+    y_mean = torch.mean(y_binary)
+    x_mean = torch.mean(x)
+    x_std = torch.std(x, unbiased=True)
+    n_pos = torch.sum(y_binary)
+    n_neg = len(y_binary) - n_pos
+    x_mean_pos = torch.mean(x[y_binary == 1])
+    x_mean_neg = torch.mean(x[y_binary == 0])
+    pbc = (x_mean_pos - x_mean_neg) * torch.sqrt(n_pos * n_neg) / (x_std * len(x))
+    return torch.abs(pbc)
+    
 
 
 
