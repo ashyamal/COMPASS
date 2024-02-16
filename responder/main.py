@@ -363,7 +363,7 @@ class PreTrainer:
 
     def predict(self, df_tpm, batch_size=512,  num_workers=4):
         model = Responder(**self.saver.inMemorySave['model_args']) 
-        model.load_state_dict(self.saver.inMemorySave['model_state_dict'])
+        model.load_state_dict(self.saver.inMemorySave['model_state_dict'], strict=False)
         model = model.to(self.device)
         dfe, dfp = Predictor(df_tpm, model, self.scaler, 
                            device = self.device, batch_size=batch_size,  num_workers=num_workers)
@@ -412,7 +412,7 @@ class PreTrainer:
 
 class FineTuner:
     '''
-    Contrastive Finetuner on ITRP datasets
+    Few-shot learning (with <full, partial, head> or without FT) on ITRP datasets
     '''
     def __init__(self, 
                 pretrainer,
@@ -443,6 +443,10 @@ class FineTuner:
                 wandb_dir = '/n/data1/hms/dbmi/zitnik/lab/users/was966/wandb/',
                 wandb_entity = 'senwanxiang',
                 work_dir = './results',
+                 task_name = 'rps', 
+                 task_type = 'c',
+                 task_dim = 2,
+                 
                 ):
         
         '''
@@ -472,9 +476,8 @@ class FineTuner:
         self.batch_correction = batch_correction
 
         self.entropy_weight = entropy_weight
-        
         self.seed = seed
-        fixseed(seed)
+        fixseed(self.seed)
         
         self.work_dir = work_dir
         self.with_wandb = with_wandb
@@ -483,6 +486,10 @@ class FineTuner:
         self.wandb_entity = wandb_entity
         self.verbose = verbose
 
+        self.task_type = task_type
+        self.task_name = task_name
+        self.task_dim = task_dim
+        
         self.params = {'mode': self.mode,   
                        'load_decoder':self.load_decoder,
                        'device':self.device,
@@ -506,18 +513,40 @@ class FineTuner:
                        'wandb_dir':self.wandb_dir,
                        'wandb_entity':self.wandb_entity,
                        'verbose':self.verbose, 
+                       'task_dim':self.task_dim,
+                        'task_type':self.task_type,
                       }
 
+
+        current_time = datetime.datetime.now()
+        formatted_time = current_time.strftime("%Y%m%d_%H%M%S")  # Format: YYYYMMDD_HHMMSS
+        run_name = f"Finetune_{self.task_name}_{formatted_time}"  # Example filename
+
+        self.run_name = run_name
+        self.save_dir = os.path.join(self.work_dir, run_name)
+
+        if self.with_wandb:
+            self.wandb = wandb.init(project = self.wandb_project, 
+                                    entity = self.wandb_entity, 
+                                    dir = self.wandb_dir,
+                                    name=self.run_name, 
+                                    save_code=True)
+            
+        ## init model, operimizer, loss ...
+        self._reset_state()
+
     
-    def _setup(self, pretrainer, task_dim, task_type, save_dir, run_name):
+    def _init_model_opt(self):
         '''
         pretrainer: TCGAPreTrainer
         '''
-        model_args = deepcopy(pretrainer.saver.inMemorySave['model_args'])
-        model_weights = deepcopy(pretrainer.saver.inMemorySave['model_state_dict'])
+        fixseed(self.seed)  # Resets the random seed
+
+        model_args = deepcopy(self.pretrainer.saver.inMemorySave['model_args'])
+        model_weights = deepcopy(self.pretrainer.saver.inMemorySave['model_state_dict'])
         
-        model_args['task_dim'] = task_dim
-        model_args['task_type'] = task_type #'f'
+        model_args['task_dim'] = self.task_dim
+        model_args['task_type'] = self.task_type #'f'
         model_args['task_dense_layer'] = self.task_dense_layer  
         model_args['task_batch_norms'] = self.task_batch_norms
 
@@ -540,7 +569,7 @@ class FineTuner:
         ### load Pretrained model
         model.load_state_dict(encoder_state, strict=False)
         model = model.to(self.device)
-        #model._projector = nn.Identity()
+
 
         if self.mode == 'head':
             for param in model.inputencoder.parameters():
@@ -565,75 +594,110 @@ class FineTuner:
                     {'params': model.taskdecoder.parameters()}, #, 'lr': 1e-3
                     ]
 
-        
         optimizer = torch.optim.Adam(plist, lr = self.lr, weight_decay = self.weight_decay)
+        return model, optimizer
 
+    
+    def _reset_state(self):
+        fixseed(self.seed)
+        self.model, self.optimizer = self._init_model_opt()
+        self.saver = SaveBestModel(save_dir = self.save_dir, save_name = 'ft_model.pth')
         ssl_loss = TripletLoss(margin=self.triplet_margin, 
                                metric = self.triplet_metric)
-
         ce_loss = CEWithNaNLabelsLoss(weights=self.task_class_weight) 
         mae_loss = MAEWithNaNLabelsLoss()
-
-        saver = SaveBestModel(save_dir = save_dir, save_name = 'ft_model.pth')
-
-        if task_type == 'c':
+        if self.task_type == 'c':
             tsk_loss = ce_loss
         else:
             tsk_loss = mae_loss
-            
-        self.model = model
         self.ssl_loss = ssl_loss
         self.tsk_loss = tsk_loss
-        self.optimizer = optimizer
-        self.saver = saver
+
+
+
+    def get_minimal_epoch(self, 
+                         dfcx_train, 
+                         dfy_train, 
+                         max_epochs = 500, 
+                         min_f1 = 0.5, 
+                         min_roc = 0.8, 
+                         min_prc = 0.8,):
         
-        if self.with_wandb:
 
-            self.wandb = wandb.init(project = self.wandb_project, 
-                                    entity = self.wandb_entity, 
-                                    dir = self.wandb_dir,
-                                    name=run_name, save_code=True)
+        model, optimizer = self._init_model_opt()
+        
+        dfcx_train = self.scaler.transform(dfcx_train)
+        train_itrp = ITRPData(dfcx_train, dfy_train)
+        train_loader = data.DataLoader(train_itrp, batch_size=self.batch_size, 
+                                       shuffle=True, drop_last=True, 
+                                       worker_init_fn = worker_init_fn,
+                                       pin_memory=True, num_workers=4) #
+
+        assert train_itrp.y.shape[1] == self.task_dim, 'task_dim doesnot matched!'
+
+        # ## init the few-shot taskdecoder based on the representation of the prototypes
+        if (self.task_type == 'f') & (len(self.task_dense_layer) == 0):
+            ## claculate the support set features
+            pretrainer = self.pretrainer
+            dfcx_train_emb, _ = pretrainer.predict(dfcx_train, batch_size=128)
+            proj_feature_names = pretrainer.model.proj_feature_names
+            dfcx_train_emb = dfcx_train_emb[proj_feature_names]
+            support_features = torch.tensor(dfcx_train_emb.values)
+            support_labels = torch.tensor(dfy_train.values)
+            model.taskdecoder.initialize_parameters(support_features, support_labels)
+            #print(support_features)
             
-            self.wandb.watch(model)
+        ### training ###
+        for epoch in tqdm(range(max_epochs), ascii=True):
+            train_total_loss, train_ssl_loss, train_tsk_loss = Trainer(train_loader, model, optimizer, 
+                                                                        self.ssl_loss, self.tsk_loss, self.device, 
+                                                                        alpha = self.task_loss_weight, 
+                                                                        correction = self.batch_correction,
+                                                                        entropy_weight = self.entropy_weight,
+                                                                      )
+            train_f1, train_mcc, train_prc, train_roc, train_acc = Evaluator(train_loader, model, self.device)
+            
+            print(train_f1, train_mcc, train_prc, train_roc, train_acc)
+            
+            if (train_f1 >= min_f1) & (train_prc >= min_prc) & (train_roc >= min_roc):
+                print(f"Stopping early at epoch {epoch+1}. Meet minimal requirements.")
+                break  
+        minimal_epoch = epoch + 1
+
+        return minimal_epoch
 
 
-    
+
     def tune(self, 
              dfcx_train, 
              dfy_train,
              dfcx_test = None, 
              dfy_test = None,
-             task_name = 'rps', 
-             task_type = 'f',
             ):
 
-
+        
+        self._reset_state()
+        if self.with_wandb:
+            self.wandb.watch(self.model)
+ 
         ### scaler ####
         dfcx_train = self.scaler.transform(dfcx_train)
-
-        self.task_type = task_type
-        self.task_name = task_name
-
         train_itrp = ITRPData(dfcx_train, dfy_train)
-
 
         #self.train_itrp = train_itrp
         self.y_scaler = train_itrp.y_scaler
         self.feature_name = train_itrp.feature_name
-        
         train_loader = data.DataLoader(train_itrp, batch_size=self.batch_size, 
                                        shuffle=True,drop_last=True, 
                                        worker_init_fn = worker_init_fn,
                                        pin_memory=True, num_workers=4) #
         
-        input_dim = len(train_itrp.feature_name)
-        task_dim = train_itrp.y.shape[1]
+
+        assert self.task_dim == train_itrp.y.shape[1], 'task_dim doesnot matched!'
         
         if dfcx_test is not None:
             dfcx_test = self.scaler.transform(dfcx_test)
             test_itrp = ITRPData(dfcx_test, dfy_test)
-
-            
             test_loader = data.DataLoader(test_itrp, 
                                           batch_size=self.batch_size, 
                                           shuffle=False,
@@ -642,52 +706,34 @@ class FineTuner:
         else:
             test_loader = None
 
-        current_time = datetime.datetime.now()
-        formatted_time = current_time.strftime("%Y%m%d_%H%M%S")  # Format: YYYYMMDD_HHMMSS
-        run_name = f"Finetune_{self.task_name}_{formatted_time}"  # Example filename
-
-        self.run_name = run_name
-        self.save_dir = os.path.join(self.work_dir, run_name)
         
-        ## init model, operimizer, ...
-        self._setup(self.pretrainer, task_dim, task_type, self.save_dir, self.run_name)
-
-        ## init the taskdecoder
-        if task_type == 'f':
+        # ## init the few-shot taskdecoder based on the representation of the prototypes
+        if (self.task_type == 'f') & (len(self.task_dense_layer) == 0):
             ## claculate the support set features
             pretrainer = self.pretrainer
             dfcx_train_emb, _ = pretrainer.predict(dfcx_train, batch_size=128)
-            if pretrainer.model.proj_level == 'cellpathway':
-                a = pretrainer.model.celltype_feature_name
-                k = pretrainer.model.ref_celltype_ids
-            else:
-                a = pretrainer.model.geneset_feature_name
-                k = pretrainer.model.ref_geneset_ids
-            proj_feature_names = [a[i] for i in range(len(a)) if i not in k]
-            
+            proj_feature_names = pretrainer.model.proj_feature_names
             dfcx_train_emb = dfcx_train_emb[proj_feature_names]
             support_features = torch.tensor(dfcx_train_emb.values)
             support_labels = torch.tensor(dfy_train.values)
             self.model.taskdecoder.initialize_parameters(support_features, support_labels)
-
-        self.input_dim = input_dim
-        self.task_dim = task_dim
+            
 
         ### training ###
         performace = []
-
         best_val_loss = float('inf')
-        
         patience_counter = 0
         for epoch in tqdm(range(self.epochs), ascii=True):
-            train_total_loss, train_ssl_loss, train_tsk_loss = Trainer(train_loader, self.model, self.optimizer, 
+            train_total_loss, train_ssl_loss, train_tsk_loss = Trainer(train_loader,  self.model, self.optimizer, 
                                                                         self.ssl_loss, self.tsk_loss, self.device, 
                                                                         alpha = self.task_loss_weight, 
                                                                         correction = self.batch_correction,
                                                                         entropy_weight = self.entropy_weight,
                                                                       )
             
-            #train_f1, train_mcc, train_prc, train_roc, train_acc = Evaluator(train_loader, model, device)
+            train_f1, train_mcc, train_prc, train_roc, train_acc = Evaluator(train_loader, self.model, self.device)
+            print(train_f1, train_mcc, train_prc, train_roc, train_acc)
+            
             if test_loader is not None:
                 #test_f1, test_mcc, test_prc, test_roc, test_acc = Evaluator(test_loader, model, device)
                 test_total_loss, test_ssl_loss, test_tsk_loss = Tester(test_loader, self.model, self.ssl_loss, 
@@ -704,7 +750,6 @@ class FineTuner:
                 else:
                     patience_counter += 1  
 
-        
             else:
                 test_total_loss, test_ssl_loss, test_tsk_loss = np.nan, np.nan, np.nan
                 self.saver(train_total_loss, epoch, self.model, self.optimizer, self.scaler)   
@@ -729,7 +774,7 @@ class FineTuner:
             if self.verbose:
                 print("Epoch: {}/{} - Train Loss: {:.4f} - Test Loss: {:.4f}".format(epoch+1, self.epochs, train_total_loss, test_total_loss))
 
-            if patience_counter >= self.patience:
+            if (patience_counter >= self.patience) & (train_roc > 0.8) & (train_prc > 0.7):
                 print(f"Stopping early at epoch {epoch+1}. No improvement in validation loss for {self.patience} consecutive epochs.")
                 break
         
@@ -747,14 +792,13 @@ class FineTuner:
         
         df.to_pickle(os.path.join(self.save_dir, '%s_train_loss.pkl' % self.task_name))
 
-        
         return self
 
 
 
     def predict(self, df_tpm, batch_size=512, num_workers=4):
         model = Responder(**self.saver.inMemorySave['model_args']) 
-        model.load_state_dict(self.saver.inMemorySave['model_state_dict'])
+        model.load_state_dict(self.saver.inMemorySave['model_state_dict'], strict=False)
         model = model.to(self.device)
         dfe, dfp = Predictor(df_tpm, model, self.scaler, 
                              device = self.device, 
@@ -837,11 +881,12 @@ class FineTuner:
                   y_val.idxmax(axis=1).value_counts().to_dict(), 
                   y_train.idxmax(axis=1).value_counts().to_dict())
         
-            tuner = FineTuner(self.pretrainer, **param)
+            tuner = FineTuner(self.pretrainer, **param,  
+                              task_name='fold_%s' % i, 
+                              task_type='c',)
+            
             tuner.tune(dfcx_train = X_train,
                         dfy_train = y_train,
-                        task_name='fold_%s' % i,
-                        task_type='c',
                         dfcx_test = X_val,
                         dfy_test = y_val)
         
@@ -852,4 +897,4 @@ class FineTuner:
         best_epochs = int(np.array(best_epochs).mean())
     
         return best_epochs
-        
+
