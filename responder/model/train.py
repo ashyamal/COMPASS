@@ -12,8 +12,8 @@ from tqdm import tqdm
 tqdm.pandas(ascii=True)
 
 from ..dataloader import GeneData
-from .loss import reference_gene_loss, entropy_regularization
-
+from .loss import entropy_regularization, independence_loss
+from .loss import reference_consistency_loss
 
 def worker_init_fn(worker_id):
     seed = torch.initial_seed() % 2**32
@@ -58,11 +58,8 @@ def Trainer(train_loader, model,
 
         ## remove batch effects by minimal the differences between house-keeping genes
         if correction != 0 :
-            refg = torch.cat([anchor_refg[0], positive_refg[0], negative_refg[0]], axis=0)
-            refe = torch.cat([anchor_refg[1], positive_refg[1], negative_refg[1]], axis=0)
-            
-            ref = reference_gene_loss(refe) #reference_gene_loss(refg) + reference_gene_loss(refe)
-            #print("Ref-g: {:.2f} - Ref-s: {:.2f}".format(reference_gene_loss(refg).item(), reference_gene_loss(refe).item()))
+            ref = reference_consistency_loss(anchor_refg[1], positive_refg[1], negative_refg[1])  
+            #print("Ref: {:.6f} - lss: {:.2f}".format(ref.item(), lss.item()))
             lss = (1-correction)*lss + correction*ref
 
         y_pred = anchor_y_pred #torch.cat([anchor_y_pred, positive_y_pred, negative_y_pred])
@@ -123,13 +120,15 @@ def Tester(test_loader, model, ssl_loss, tsk_loss,
         if correction != 0 :
             refg = torch.cat([anchor_refg[0], positive_refg[0], negative_refg[0]], axis=0)
             refe = torch.cat([anchor_refg[1], positive_refg[1], negative_refg[1]], axis=0)
+            ref = reference_consistency_loss(anchor_refg[1], positive_refg[1], negative_refg[1])  
+            #independence_loss(refe, refy)
             
-            ref = reference_gene_loss(refe) #reference_gene_loss(refg) + reference_gene_loss(refe)
-            #print("Ref-g: {:.2f} - Ref-s: {:.2f}".format(reference_gene_loss(refg).item(), reference_gene_loss(refe).item()))
+            #print("Ref: {:.6f} - lss: {:.2f}".format(ref.item(), lss.item()))
             lss = (1-correction)*lss + correction*ref
-            
-        y_pred = anchor_y_pred  #torch.cat([anchor_y_pred, positive_y_pred, negative_y_pred], dim = 0)
-        y_true = anchor_y_true #torch.cat([anchor_y_true, positive_y_true, negative_y_true], dim = 0)
+
+        #torch.cat([anchor_y_pred, positive_y_pred, negative_y_pred], dim = 0)
+        y_pred = anchor_y_pred  
+        y_true = anchor_y_true
         tsk = tsk_loss(y_pred, y_true)
         
 
@@ -217,16 +216,25 @@ def Predictor(dfcx, model, scaler, device = 'cpu', batch_size=512,  num_workers=
         (anchor_emb, anchor_refg), anchor_ys = model(anchor)
         embds.append(anchor_emb)
         ys.append(anchor_ys)
+
     
     embeddings  = torch.concat(embds, axis=0).cpu().detach().numpy()
     predictions = torch.concat(ys, axis=0).cpu().detach().numpy()
+
+    if len(model.embed_feature_names) == embeddings.shape[1]:
+        columns = model.embed_feature_names
+    else:
+        columns = model.proj_feature_names
+    
     dfe = pd.DataFrame(embeddings, index = predict_tcga.patient_name, 
-                       columns = model.embed_feature_names)
+                       columns = columns) 
     dfp = pd.DataFrame(predictions, index = predict_tcga.patient_name)
 
     return dfe, dfp
 
 
+
+        
 
 
 
@@ -239,9 +247,7 @@ def Extractor(dfcx, model, scaler, device = 'cpu', batch_size = 512,  num_worker
     dfcx = scaler.transform(dfcx)
     genesetprojector = model.latentprojector.genesetprojector
     cellpathwayprojector = model.latentprojector.cellpathwayprojector
-    
 
-    
     predict_tcga = GeneData(dfcx)
     predict_loader = Torchdata.DataLoader(predict_tcga, 
                                           batch_size=batch_size, 
@@ -251,6 +257,7 @@ def Extractor(dfcx, model, scaler, device = 'cpu', batch_size = 512,  num_worker
                                           num_workers=num_workers)
     geneset_feat = []
     celltype_feat = []
+
     for anchor in tqdm(predict_loader, ascii=True):
         anchor = anchor.to(device)
         encoding = model.inputencoder(anchor)
@@ -261,7 +268,7 @@ def Extractor(dfcx, model, scaler, device = 'cpu', batch_size = 512,  num_worker
 
     genesetfeatures  = torch.concat(geneset_feat, axis=0).cpu().detach().numpy()
     celltypefeatures = torch.concat(celltype_feat, axis=0).cpu().detach().numpy()
-    
+
     dfgeneset = pd.DataFrame(genesetfeatures, index = predict_tcga.patient_name, columns = model.geneset_feature_name)
     dfcelltype = pd.DataFrame(celltypefeatures, index = predict_tcga.patient_name, columns = model.celltype_feature_name)
     

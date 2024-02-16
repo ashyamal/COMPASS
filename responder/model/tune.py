@@ -12,8 +12,8 @@ from tqdm import tqdm
 tqdm.pandas(ascii=True)
 
 from ..dataloader import GeneData
-from .loss import reference_gene_loss, entropy_regularization
-
+from .loss import entropy_regularization, independence_loss
+from .loss import reference_consistency_loss
 
 def worker_init_fn(worker_id):
     seed = torch.initial_seed() % 2**32
@@ -21,11 +21,10 @@ def worker_init_fn(worker_id):
 
 
 
-
-def Tuner(train_loader, model, 
+def Trainer(train_loader, model, 
             optimizer, ssl_loss, 
             tsk_loss, device, 
-            alpha=1.0, 
+            alpha=0.0, 
             correction = 0.0, 
             entropy_weight = 0.0):
 
@@ -59,15 +58,16 @@ def Tuner(train_loader, model,
 
         ## remove batch effects by minimal the differences between house-keeping genes
         if correction != 0 :
-            refg = torch.cat([anchor_refg[0], positive_refg[0], negative_refg[0]], axis=0)
-            refe = torch.cat([anchor_refg[1], positive_refg[1], negative_refg[1]], axis=0)
-            
-            ref = reference_gene_loss(refg) + reference_gene_loss(refe)
-            #print("Ref-g: {:.2f} - Ref-s: {:.2f}".format(reference_gene_loss(refg).item(), reference_gene_loss(refe).item()))
-            lss = (1-correction)*lss + ref*correction
+            #refe = torch.cat([anchor_refg[1], positive_refg[1], negative_refg[1]], axis=0)
+            #refy = torch.cat([anchor_y_true, positive_y_true, negative_y_true], axis=0)
+            #l3 = independence_loss(refe, refy)
+            #ref = reference_gene_loss(refe)  #enlarge the loss to match lss loss
+            ref = reference_consistency_loss(anchor_refg[1], positive_refg[1], negative_refg[1])  
+            #print("Ref: {:.6f} - lss: {:.2f}".format(ref.item(), lss.item()))
+            lss = (1-correction)*lss + correction*ref
 
-        y_pred = torch.cat([anchor_y_pred, positive_y_pred, negative_y_pred])
-        y_true = torch.cat([anchor_y_true, positive_y_true, negative_y_true])
+        y_pred = anchor_y_pred #torch.cat([anchor_y_pred, positive_y_pred, negative_y_pred])
+        y_true = anchor_y_true #torch.cat([anchor_y_true, positive_y_true, negative_y_true])
         tsk = tsk_loss(y_pred, y_true)
         
         if entropy_weight != 0 :
@@ -124,13 +124,17 @@ def Tester(test_loader, model, ssl_loss, tsk_loss,
         if correction != 0 :
             refg = torch.cat([anchor_refg[0], positive_refg[0], negative_refg[0]], axis=0)
             refe = torch.cat([anchor_refg[1], positive_refg[1], negative_refg[1]], axis=0)
+            #reference_gene_loss(refe)  #
+            #refy = torch.cat([anchor_y_true, positive_y_true, negative_y_true])
+            ref = reference_consistency_loss(anchor_refg[1], positive_refg[1], negative_refg[1])  
+            #independence_loss(refe, refy)
             
-            ref = reference_gene_loss(refg) + reference_gene_loss(refe)
-            #print("Ref-g: {:.2f} - Ref-s: {:.2f}".format(reference_gene_loss(refg).item(), reference_gene_loss(refe).item()))
-            lss = (1-correction)*lss + ref*correction
-            
-        y_pred = torch.cat([anchor_y_pred, positive_y_pred, negative_y_pred])
-        y_true = torch.cat([anchor_y_true, positive_y_true, negative_y_true])
+            #print("Ref: {:.6f} - lss: {:.2f}".format(ref.item(), lss.item()))
+            lss = (1-correction)*lss + correction*ref
+
+        #torch.cat([anchor_y_pred, positive_y_pred, negative_y_pred], dim = 0)
+        y_pred = anchor_y_pred  
+        y_true = anchor_y_true
         tsk = tsk_loss(y_pred, y_true)
         
 
@@ -146,3 +150,132 @@ def Tester(test_loader, model, ssl_loss, tsk_loss,
     
     return test_total_loss, test_ssl_loss, test_tsk_loss
 
+
+
+
+
+from sklearn.metrics import roc_auc_score, precision_recall_curve
+from sklearn.metrics import auc as prc_auc_score
+from sklearn.metrics import f1_score, accuracy_score
+from sklearn.metrics import confusion_matrix
+from sklearn.metrics import matthews_corrcoef
+
+def scorer(y_true, y_pred):
+    
+    y_prob = y_pred[:, 1]
+    y_pred = y_pred.argmax(axis=1)
+    y_true = y_true.argmax(axis=1)
+    
+    roc = roc_auc_score(y_true, y_prob)
+    _precision, _recall, _ = precision_recall_curve(y_true, y_prob)
+    prc = prc_auc_score(_recall, _precision)
+    f1 = f1_score(y_true, y_pred)
+    acc = accuracy_score(y_true, y_pred)
+    mcc  = matthews_corrcoef(y_true, y_pred)
+    
+    return f1, mcc, prc, roc, acc
+
+
+@torch.no_grad()
+def Evaluator(test_loader, model, device):
+    model.eval()
+    y_trues = []
+    y_preds = []
+    for data in test_loader:
+        triplet, label = data
+        anchor, positive, negative = triplet
+        anchor_y_true, positive_y_true, negative_y_true = label
+        
+        anchor = anchor.to(device)
+        anchor_y_true = anchor_y_true.to(device)
+        
+        (anchor_emb, anchor_refg), anchor_y_pred = model(anchor)
+        
+        y_trues.append(anchor_y_true)
+        y_preds.append(anchor_y_pred)
+
+    y_true =  torch.concat(y_trues, axis=0).cpu().detach().numpy()
+    y_pred =  torch.concat(y_preds, axis=0).cpu().detach().numpy()
+
+    f1, mcc, prc,roc, acc = scorer(y_true, y_pred)
+    return f1, mcc, prc, roc, acc
+
+
+    
+
+@torch.no_grad()
+def Predictor(dfcx, model, scaler, device = 'cpu', batch_size=512,  num_workers=4):
+    model.eval()
+    dfcx = scaler.transform(dfcx)
+    
+    predict_tcga = GeneData(dfcx)
+    predict_loader = Torchdata.DataLoader(predict_tcga, 
+                                          batch_size=batch_size, 
+                                          shuffle=False,
+                                          pin_memory=True, 
+                                          worker_init_fn = worker_init_fn,
+                                          num_workers=num_workers)
+    embds = []
+    ys = []
+    for anchor in tqdm(predict_loader, ascii=True):
+        anchor = anchor.to(device)
+        (anchor_emb, anchor_refg), anchor_ys = model(anchor)
+        embds.append(anchor_emb)
+        ys.append(anchor_ys)
+
+    
+    embeddings  = torch.concat(embds, axis=0).cpu().detach().numpy()
+    predictions = torch.concat(ys, axis=0).cpu().detach().numpy()
+
+    if len(model.embed_feature_names) == embeddings.shape[1]:
+        columns = model.embed_feature_names
+    else:
+        columns = model.proj_feature_names
+    
+    dfe = pd.DataFrame(embeddings, index = predict_tcga.patient_name, 
+                       columns = columns) 
+    dfp = pd.DataFrame(predictions, index = predict_tcga.patient_name)
+
+    return dfe, dfp
+
+
+
+        
+
+
+
+@torch.no_grad()
+def Extractor(dfcx, model, scaler, device = 'cpu', batch_size = 512,  num_workers=4):
+    '''
+    Extract geneset-level and celltype-level features
+    '''
+    model.eval()
+    dfcx = scaler.transform(dfcx)
+    genesetprojector = model.latentprojector.genesetprojector
+    cellpathwayprojector = model.latentprojector.cellpathwayprojector
+
+    predict_tcga = GeneData(dfcx)
+    predict_loader = Torchdata.DataLoader(predict_tcga, 
+                                          batch_size=batch_size, 
+                                          shuffle=False,
+                                          pin_memory=True, 
+                                          worker_init_fn = worker_init_fn,
+                                          num_workers=num_workers)
+    geneset_feat = []
+    celltype_feat = []
+
+    for anchor in tqdm(predict_loader, ascii=True):
+        anchor = anchor.to(device)
+        encoding = model.inputencoder(anchor)
+        geneset_level_proj, cellpathway_level_proj = model.latentprojector(encoding)
+    
+        geneset_feat.append(geneset_level_proj)
+        celltype_feat.append(cellpathway_level_proj)
+
+    genesetfeatures  = torch.concat(geneset_feat, axis=0).cpu().detach().numpy()
+    celltypefeatures = torch.concat(celltype_feat, axis=0).cpu().detach().numpy()
+
+    dfgeneset = pd.DataFrame(genesetfeatures, index = predict_tcga.patient_name, columns = model.geneset_feature_name)
+    dfcelltype = pd.DataFrame(celltypefeatures, index = predict_tcga.patient_name, columns = model.celltype_feature_name)
+    
+    return dfgeneset, dfcelltype

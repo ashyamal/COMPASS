@@ -8,9 +8,20 @@ Created on Fri Nov  3 13:31:25 2023
 import torch
 import torch.nn as nn
 from ..encoder import TransformerEncoder, MLPEncoder
-from ..decoder import ClassDecoder, RegDecoder, SoftmaxClassifier
+from ..decoder import ClassDecoder, RegDecoder, ProtoNetDecoder
 from ..projector import DisentangledProjector, EntangledProjector
 
+
+import numpy as np
+import random
+def fixseed(seed=42): 
+    np.random.seed(seed)  
+    random.seed(seed)  
+    torch.manual_seed(seed)  
+    torch.cuda.manual_seed_all(seed)  
+    torch.cuda.manual_seed(seed)  
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
 
 
 
@@ -74,6 +85,8 @@ class Responder(nn.Module):
         self.task_dense_layer = task_dense_layer
         self.encoder_kwargs = encoder_kwargs
 
+        fixseed(seed=42)
+        
         self.inputencoder = TransformerEncoder(num_cancer_types=num_cancer_types,
                                                encoder_type = encoder,
                                                input_dim = input_dim, 
@@ -153,8 +166,11 @@ class Responder(nn.Module):
 
         #for softmax classifier
         elif task_type == 'f':
-            self.taskdecoder = SoftmaxClassifier(input_dim = self.embed_dim, 
-                                                 out_dim = task_dim)
+            self.taskdecoder = ProtoNetDecoder(input_dim = self.embed_dim, 
+                                                out_dim = task_dim,
+                                                dense_layers = task_dense_layer, 
+                                                batch_norms = task_batch_norms
+                                                )
             
             
 
