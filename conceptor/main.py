@@ -421,7 +421,7 @@ class FineTuner:
                 device='cuda',
                 lr = 1e-3,
                 weight_decay = 1e-4,
-                epochs = 100,
+                max_epochs = 500,
                 patience = 10, 
                  
                 batch_size = 32,
@@ -462,7 +462,7 @@ class FineTuner:
         self.device=device
         self.lr = lr
         self.weight_decay = weight_decay
-        self.epochs = epochs
+        self.max_epochs = max_epochs
         self.patience = patience
         self.batch_size = batch_size
         self.triplet_metric = triplet_metric
@@ -494,7 +494,7 @@ class FineTuner:
                        'device':self.device,
                        'lr': self.lr,
                        'weight_decay':self.weight_decay,
-                       'epochs':self.epochs,
+                       'max_epochs':self.max_epochs,
                        'patience':self.patience,
                        'batch_size':self.batch_size,
                        'triplet_margin':self.triplet_margin, 
@@ -614,16 +614,17 @@ class FineTuner:
 
 
 
-    def get_minimal_epoch(self, 
-                         dfcx_train, 
-                         dfy_train, 
-                         max_epochs = 500, 
-                         min_f1 = 0.5, 
-                         min_roc = 0.8, 
-                         min_prc = 0.8,):
+    def tune(self, 
+             dfcx_train, 
+             dfy_train, 
+             min_f1 = 0.8, 
+             min_roc = 0.8, 
+             min_prc = 0.8):
         
 
-        model, optimizer = self._init_model_opt()
+        self._reset_state()
+        if self.with_wandb:
+            self.wandb.watch(self.model)
         
         dfcx_train = self.scaler.transform(dfcx_train)
         train_itrp = ITRPData(dfcx_train, dfy_train)
@@ -643,36 +644,49 @@ class FineTuner:
             dfcx_train_emb = dfcx_train_emb[proj_feature_names]
             support_features = torch.tensor(dfcx_train_emb.values)
             support_labels = torch.tensor(dfy_train.values)
-            model.taskdecoder.initialize_parameters(support_features, support_labels)
+            self.model.taskdecoder.initialize_parameters(support_features, support_labels)
             #print(support_features)
             
         ### training ###
-        for epoch in tqdm(range(max_epochs), ascii=True):
-            train_total_loss, train_ssl_loss, train_tsk_loss = Trainer(train_loader, model, optimizer, 
+        performance = []
+        for epoch in tqdm(range(self.max_epochs), ascii=True):
+            train_total_loss, train_ssl_loss, train_tsk_loss = Trainer(train_loader, self.model, self.optimizer, 
                                                                         self.ssl_loss, self.tsk_loss, self.device, 
                                                                         alpha = self.task_loss_weight, 
                                                                         correction = self.batch_correction,
                                                                         entropy_weight = self.entropy_weight,
                                                                       )
-            train_f1, train_mcc, train_prc, train_roc, train_acc = Evaluator(train_loader, model, self.device)
-            
+            train_f1, train_mcc, train_prc, train_roc, train_acc = Evaluator(train_loader, self.model, self.device)
+            performance.append([epoch, train_f1, train_mcc, train_prc, train_roc, train_acc])
+
+            if self.with_wandb:
+                self.wandb.log({'train_f1': train_f1, 'train_prc':train_prc, 'train_roc':train_roc, 'train_acc':train_acc, 'train_mcc':train_mcc})
+                
+            if self.verbose:
+                print("Epoch: {}/{} - Train roc: {:.4f}, prc: {:.4f}, f1: {:.4f} ".format(epoch+1, self.epochs, train_roc, train_prc, train_f1))
+
             #print(train_f1, train_mcc, train_prc, train_roc, train_acc)
+            saving_criteria = -np.mean([train_f1, train_prc, train_roc])
+            
+            self.saver(saving_criteria, epoch, self.model, self.optimizer, self.scaler) 
             
             if (train_f1 >= min_f1) & (train_prc >= min_prc) & (train_roc >= min_roc):
-                print(f"Stopping early at epoch {epoch+1}. Meet minimal requirements.")
-                break  
-        minimal_epoch = epoch + 1
+                print("Stopping early at epoch {:2d}. Meet minimal requirements by: f1={:.2f}, prc={:.2f}, roc={:.2f}".format(epoch+1, train_f1, 
+                                                                                                                              train_prc, train_roc))
+                break 
 
-        return minimal_epoch
+        self.saver.save()
+        self.performance = performance
+        return self
 
 
 
-    def tune(self, 
-             dfcx_train, 
-             dfy_train,
-             dfcx_test = None, 
-             dfy_test = None,
-            ):
+    def tune_with_test(self, 
+                         dfcx_train, 
+                         dfy_train,
+                         dfcx_test = None, 
+                         dfy_test = None,
+                        ):
 
         
         self._reset_state()
@@ -722,7 +736,7 @@ class FineTuner:
         performace = []
         best_val_loss = float('inf')
         patience_counter = 0
-        for epoch in tqdm(range(self.epochs), ascii=True):
+        for epoch in tqdm(range(self.max_epochs), ascii=True):
             train_total_loss, train_ssl_loss, train_tsk_loss = Trainer(train_loader,  self.model, self.optimizer, 
                                                                         self.ssl_loss, self.tsk_loss, self.device, 
                                                                         alpha = self.task_loss_weight, 
@@ -731,33 +745,33 @@ class FineTuner:
                                                                       )
             
             train_f1, train_mcc, train_prc, train_roc, train_acc = Evaluator(train_loader, self.model, self.device)
+            train_avg_metric = np.mean([train_f1, train_mcc, train_prc, train_roc, train_acc])
+            saving_criteria =  -train_avg_metric
             #print(train_f1, train_mcc, train_prc, train_roc, train_acc)
-            
+
             if test_loader is not None:
-                #test_f1, test_mcc, test_prc, test_roc, test_acc = Evaluator(test_loader, model, device)
+                test_f1, test_mcc, test_prc, test_roc, test_acc = Evaluator(test_loader, self.model, self.device)
+                
                 test_total_loss, test_ssl_loss, test_tsk_loss = Tester(test_loader, self.model, self.ssl_loss, 
                                                                         self.tsk_loss, self.device, 
                                                                         alpha =self.task_loss_weight,
-                                                                        correction = 0.0,
-                                                                      )
-                self.saver(test_total_loss, epoch, self.model, self.optimizer, self.scaler)
+                                                                        correction = 0.0,)
 
-                # Early Stopping Check
-                if test_total_loss < best_val_loss:
-                    best_val_loss = test_total_loss
-                    patience_counter = 0  
-                else:
-                    patience_counter += 1  
-
+                test_avg_metric = np.mean([test_f1, test_mcc, test_prc, test_roc, test_acc])
+                saving_criteria =  -test_avg_metric
+                
             else:
                 test_total_loss, test_ssl_loss, test_tsk_loss = np.nan, np.nan, np.nan
-                self.saver(train_total_loss, epoch, self.model, self.optimizer, self.scaler)   
-                # Early Stopping Check
-                if train_total_loss < best_val_loss:
-                    best_val_loss = train_total_loss
-                    patience_counter = 0  
-                else:
-                    patience_counter += 1  
+                
+            ## saving_criteria: lower is better
+            ## saving model & Early Stopping based on saving_criteria
+            self.saver(saving_criteria, epoch, self.model, self.optimizer, self.scaler)   
+            if saving_criteria < best_val_loss:
+                best_val_loss = saving_criteria
+                patience_counter = 0  
+            else:
+                patience_counter += 1
+                
 
             performace.append([epoch, train_total_loss, train_ssl_loss, train_tsk_loss, 
                                test_total_loss, test_ssl_loss, test_tsk_loss])
