@@ -423,7 +423,6 @@ class FineTuner:
                 weight_decay = 1e-4,
                 max_epochs = 500,
                 patience = 10, 
-                 
                 batch_size = 32,
                  
                 triplet_metric = 'cosine',
