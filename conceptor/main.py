@@ -415,7 +415,7 @@ class FineTuner:
     '''
     def __init__(self, 
                 pretrainer,
-                mode = 'head',
+                mode = 'PFT',
                 load_decoder = False, 
                  
                 device='cuda',
@@ -449,7 +449,7 @@ class FineTuner:
         
         '''
         pretrainer: TCGAPreTrainer
-        mode: tuning mode{head, partial, or full}
+        mode: tuning mode{head:LFT, partial: PFT, or full: FFT}
         '''
         
         self.pretrainer = pretrainer.copy()
@@ -569,14 +569,14 @@ class FineTuner:
         model = model.to(self.device)
 
 
-        if self.mode == 'head':
+        if self.mode == 'LFT':
             for param in model.inputencoder.parameters():
                 param.requires_grad = False
             for param in model.latentprojector.parameters():
                 param.requires_grad = False
             plist = [{'params':model.taskdecoder.parameters()}]
             
-        elif self.mode == 'partial':
+        elif self.mode == 'PFT':
             for param in model.inputencoder.parameters():
                 param.requires_grad = False
             plist = [
@@ -584,14 +584,16 @@ class FineTuner:
                     {'params': model.taskdecoder.parameters()}, #, 'lr': 1e-3
                     ]
 
-        else:
+        elif self.mode == 'FFT':
             # with/wo layer decay
             plist = [
                     {'params': model.inputencoder.parameters()}, #, 'lr': 1e-6
                     {'params': model.latentprojector.parameters()}, #, 'lr': 1e-5
                     {'params': model.taskdecoder.parameters()}, #, 'lr': 1e-3
                     ]
-
+        else:
+            raise ValueError("Invalid mode type. Use 'PFT','LFT' or 'FFT'. ")
+            
         optimizer = torch.optim.Adam(plist, lr = self.lr, weight_decay = self.weight_decay)
         return model, optimizer
 
@@ -648,6 +650,9 @@ class FineTuner:
             
         ### training ###
         performance = []
+        best_criteria = 1e10
+        self.saver(best_criteria, 0, self.model, self.optimizer, self.scaler)
+
         for epoch in tqdm(range(self.max_epochs), ascii=True):
             train_total_loss, train_ssl_loss, train_tsk_loss = Trainer(train_loader, self.model, self.optimizer, 
                                                                         self.ssl_loss, self.tsk_loss, self.device, 
