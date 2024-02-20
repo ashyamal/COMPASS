@@ -148,6 +148,7 @@ class PreTrainer:
         self.wandb_dir = wandb_dir
         self.wandb_entity = wandb_entity
         self.encoder_kwargs = encoder_kwargs
+
         
     def _setup(self, input_dim, task_dim, task_type, save_dir, run_name):
 
@@ -331,7 +332,7 @@ class PreTrainer:
                 print(f"Stopping early at epoch {epoch+1}. No improvement in validation loss for {self.patience} consecutive epochs.")
                 break
                 
-        
+
         self.saver.save()
         self.performace = performace
 
@@ -417,7 +418,7 @@ class FineTuner:
                 pretrainer,
                 mode = 'PFT',
                 load_decoder = False, 
-                 
+                
                 device='cuda',
                 lr = 1e-3,
                 weight_decay = 1e-4,
@@ -441,10 +442,10 @@ class FineTuner:
                 wandb_dir = '/n/data1/hms/dbmi/zitnik/lab/users/was966/wandb/',
                 wandb_entity = 'senwanxiang',
                 work_dir = './results',
-                 task_name = 'rps', 
-                 task_type = 'c',
-                 task_dim = 2,
-                 
+                task_name = 'rps', 
+                task_type = 'c',
+                task_dim = 2,
+                save_best_model = False
                 ):
         
         '''
@@ -487,6 +488,7 @@ class FineTuner:
         self.task_type = task_type
         self.task_name = task_name
         self.task_dim = task_dim
+        self.save_best_model = save_best_model
         
         self.params = {'mode': self.mode,   
                        'load_decoder':self.load_decoder,
@@ -513,6 +515,7 @@ class FineTuner:
                        'verbose':self.verbose, 
                        'task_dim':self.task_dim,
                         'task_type':self.task_type,
+                       'save_best_model':self.save_best_model,
                       }
 
 
@@ -679,7 +682,8 @@ class FineTuner:
                                                                                                                               train_prc, train_roc))
                 break 
 
-        self.saver.save()
+        if self.save_best_model:
+            self.saver.save()
         self.performance = performance
         return self
 
@@ -794,8 +798,8 @@ class FineTuner:
             if (patience_counter >= self.patience) & (train_roc > 0.8) & (train_prc > 0.7):
                 print(f"Stopping early at epoch {epoch+1}. No improvement in validation loss for {self.patience} consecutive epochs.")
                 break
-        
-        self.saver.save()
+        if self.save_best_model:
+            self.saver.save()
         self.performace = performace
 
         ## plot loss locally
