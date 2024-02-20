@@ -684,6 +684,8 @@ class FineTuner:
 
         if self.save_best_model:
             self.saver.save()
+        else:
+            os.system('rm -r %s' % self.save_dir)
         self.performance = performance
         return self
 
@@ -709,7 +711,7 @@ class FineTuner:
         self.y_scaler = train_itrp.y_scaler
         self.feature_name = train_itrp.feature_name
         train_loader = data.DataLoader(train_itrp, batch_size=self.batch_size, 
-                                       shuffle=True,drop_last=True, 
+                                       shuffle=True, drop_last=True, 
                                        worker_init_fn = worker_init_fn,
                                        pin_memory=True, num_workers=4) #
         
@@ -800,6 +802,9 @@ class FineTuner:
                 break
         if self.save_best_model:
             self.saver.save()
+        else:
+            os.system('rm -r %s' % self.save_dir)
+            
         self.performace = performace
 
         ## plot loss locally
