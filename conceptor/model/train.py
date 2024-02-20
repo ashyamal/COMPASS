@@ -153,8 +153,10 @@ def scorer(y_true, y_pred):
     y_prob = y_pred[:, 1]
     y_pred = y_pred.argmax(axis=1)
     y_true = y_true.argmax(axis=1)
-    
-    roc = roc_auc_score(y_true, y_prob)
+    if len(np.unique(y_true)) == 1:
+        roc = np.nan
+    else:
+        roc = roc_auc_score(y_true, y_prob)
     _precision, _recall, _ = precision_recall_curve(y_true, y_prob)
     prc = prc_auc_score(_recall, _precision)
     f1 = f1_score(y_true, y_pred)
