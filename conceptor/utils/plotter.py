@@ -1,8 +1,13 @@
+from .scorer import score
+
 import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
 from umap import UMAP
 import seaborn as sns
 sns.set(style = 'white', font_scale=1.5)
+
+
 
 
 
@@ -66,3 +71,95 @@ def plot_embed_with_label(dfp, label_col = ['cancer_type'],  label_type = ['c'],
         
     else:
         return figs, df2d
+
+
+
+
+def plot_performance(y_true, y_prob, y_pred):
+    
+    from sklearn.metrics import confusion_matrix
+    roc, prc, f1, acc = score(y_true, y_prob, y_pred)
+    dfp = pd.DataFrame([y_true, y_prob, y_pred]).T
+    dfp.columns = ['Label', 'Pred. Prob.', 'Pred_label']
+    dfp.Label = dfp.Label.map({0:'NR', 1:'R'})
+    cf_matrix = confusion_matrix(y_true, y_pred, labels = [1, 0])
+    
+    tp_and_fn = cf_matrix.sum(1)
+    tp_and_fp = cf_matrix.sum(0)
+    tp = cf_matrix.diagonal()
+    precision = tp / tp_and_fp
+    recall = tp / tp_and_fn
+    precision, recall = precision[0], recall[0]
+    
+    palette = sns.color_palette('rainbow', 12)
+    
+    colors = palette.as_hex()
+    boxpalette = {'NR':colors[1], 'R':colors[-3]}
+    swarmpalette = {'NR':colors[2], 'R':colors[-3]}
+    
+    fig, axes= plt.subplots(ncols=3, nrows=1, figsize=(8,3),
+                            gridspec_kw={'width_ratios': [4, 1, 3]},        
+                            sharex=False, sharey=False)
+    
+    ax2, ax1, ax3 =axes
+    
+    ###################################
+    order = ['R', 'NR']
+    sns.boxplot(x = 'Label', y = 'Pred. Prob.',data = dfp,  fliersize = 0., width = 0.5,
+                order = order,
+                ax=ax1, palette = boxpalette, saturation = 0.8, boxprops={'facecolor':'None'})
+    sns.stripplot(dfp, x = 'Label', y = 'Pred. Prob.', ax=ax1, size=3, 
+                  order = order,
+                  palette = boxpalette, edgecolor = 'k', linewidth = 0.1)
+    
+    ax1.xaxis.tick_bottom() # x axis on top
+    ax1.xaxis.set_label_position('bottom')
+    ax1.set_xlabel("")
+    ax1.tick_params(axis='x', labelrotation=60)
+    
+    ax1.set_yticks([0.0, 0.5, 1.0])
+    ax1.yaxis.tick_left() # x axis on top
+    ax1.spines[['right', 'top']].set_visible(False)
+    
+    
+    ###################################
+    group_names = ['True R','False NR','False R','True NR']
+    group_counts = ["{0:0.0f}".format(value) for value in
+                    cf_matrix.flatten()]
+    group_percentages = ["{0:.2%}".format(value) for value in
+                         cf_matrix.flatten()/np.sum(cf_matrix)]
+    labels = [f"{v1}\n{v2}" for v1, v2 in zip(group_names,group_counts)] #,group_percentages
+    labels = np.asarray(labels).reshape(2,2)
+    
+    
+    cf_df = pd.DataFrame(cf_matrix, index = ['R', 'NR'], columns = ['R', 'NR'])
+    sns.heatmap(cf_df, annot=labels, fmt='', cmap='Blues', ax=ax2, cbar = False)
+    
+    ax2.xaxis.tick_bottom() # x axis on top
+    ax2.xaxis.set_label_position('bottom')
+    #ax2.set_xlabel("Predicted Label")
+    ax2.tick_params(axis='x', labelrotation=60)
+    
+    ax2.yaxis.tick_left() # x axis on top
+    ax2.yaxis.set_label_position('left')
+    ax2.set_ylabel("True Label")
+    ax2.tick_params(axis='y', labelrotation=60)
+    
+    
+    ###################################
+    dfpp = pd.DataFrame([roc, prc, f1, precision, recall], 
+                        index=['ROC', 'PRC', 'F1', 'Prec.', 'Recall'])
+    
+    dfpp.plot(kind = 'barh', ax=ax3, legend=False, color = 'b', alpha = 0.5)
+    ax3.yaxis.tick_left() # x axis on top
+    ax3.yaxis.set_label_position('left')
+    ax3.set_xticks([0.0, 0.5, 1.0])
+    ax3.xaxis.tick_bottom() # x axis on top
+    ax3.xaxis.set_label_position('bottom')
+    
+    for y, x in dfpp[0].reset_index(drop=True).items():
+        ax3.text(x, y-0.15, '%.2f' % x )
+    ax3.spines[['right', 'top']].set_visible(False)
+    
+    fig.tight_layout(pad = 1.5)
+    return fig

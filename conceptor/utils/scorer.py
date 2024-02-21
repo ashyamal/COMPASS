@@ -19,7 +19,7 @@ def score(y_true, y_prob, y_pred):
         _precision, _recall, _ = precision_recall_curve(y_true, y_prob)
         prc = prc_auc_score(_recall, _precision)
         
-    f1 = f1_score(y_true, y_pred)
+    f1 = f1_score(y_true, y_pred, pos_label=1)
     acc = accuracy_score(y_true, y_pred)
 
     return roc, prc, f1, acc
