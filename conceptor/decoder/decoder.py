@@ -3,9 +3,11 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn import Sequential, Linear, ModuleList, ReLU, Dropout
 from copy import deepcopy 
-
-
+import pandas as pd
 import numpy as np
+
+
+
 import random
 def fixseed(seed=42): 
     np.random.seed(seed)  
@@ -19,15 +21,14 @@ def fixseed(seed=42):
 
 
 
-
 class ClassDecoder(nn.Module):
-    def __init__(self, input_dim=32, dense_layers = [], out_dim = 2, dropout_p = 0.0, batch_norms = True):
+    def __init__(self, input_dim=32, dense_layers = [], out_dim = 2, dropout_p = 0.0, batch_norms = True, seed = 42):
         '''
         classification
         '''
         super(ClassDecoder,self).__init__()
-
-        fixseed(seed = 42)
+        self.seed = seed
+        fixseed(seed = seed)
         
         ## Input
         self.input_norm = torch.nn.BatchNorm1d(input_dim)
@@ -72,13 +73,13 @@ class ClassDecoder(nn.Module):
         
 
 class RegDecoder(nn.Module):
-    def __init__(self, input_dim=32, dense_layers = [], out_dim = 1, dropout_p = 0.0, batch_norms = True):
+    def __init__(self, input_dim=32, dense_layers = [], out_dim = 1, dropout_p = 0.0, batch_norms = True, seed = 42):
         '''
         Regression
         '''
         super(RegDecoder,self).__init__()
-        
-        fixseed(seed = 42)
+        self.seed = seed
+        fixseed(seed = seed)
 
         ## Input
         self.input_norm = torch.nn.BatchNorm1d(input_dim)
@@ -124,9 +125,12 @@ class RegDecoder(nn.Module):
 
 
 class ProtoNetDecoder(nn.Module):
-    def __init__(self, input_dim, out_dim = 2, dense_layers = [],  dropout_p = 0.0, batch_norms = True ): 
+    def __init__(self, input_dim, out_dim = 2, dense_layers = [],  dropout_p = 0.0, batch_norms = True, temperature=1, seed = 42): 
         super(ProtoNetDecoder, self).__init__()
-        fixseed(seed = 42)
+
+        self.temperature = temperature
+        self.seed = seed
+        fixseed(seed = seed)
 
         # Input
         self.input_norm = torch.nn.BatchNorm1d(input_dim)
@@ -165,7 +169,6 @@ class ProtoNetDecoder(nn.Module):
         if self.batch_norms & len(self._batch_norms) == 0:
             x = self.input_norm(x)
 
-        
         for lin, norm in zip(self.lins, self._batch_norms):
             if self.batch_norms:
                 x = self.dropout(F.relu(norm(lin(x)), inplace=True))
@@ -181,7 +184,7 @@ class ProtoNetDecoder(nn.Module):
         # Add the bias term
         logits = cosine_similarity + self.b
         # Apply softmax to get probabilities
-        probabilities = F.softmax(logits, dim=1)
+        probabilities = F.softmax(logits / self.temperature, dim=1)
         return probabilities
 
     
@@ -201,4 +204,64 @@ class ProtoNetDecoder(nn.Module):
                 # Assign the mean vector to the corresponding row in W
                 self.W[i] = class_mean
 
+
+
+
+
+# Define the Prototypical Network without fine-tuning
+class ProtoNetNFTDecoder:
+
+    def __init__(self):
+        
+        self.prototype_class_map = {'PD':0, 'SD':0,
+                                    'PR':1, 'CR':1, 1:1, 0:0, 
+                                    'R':1, 'NR':0}
+
+        self.temperature = 0.1
+        
+
+    def fit(self, support_set):
+        '''
+        support_set: the last column is the RECIST label column
+        '''
+        self.label_col = support_set.columns[-1]
+        self.feature_col = support_set.columns[:-1]
+        
+        unique_recist_labels = support_set[self.label_col].unique()
+        out_recist = set(unique_recist_labels) - set(self.prototype_class_map.keys())
+        assert len(out_recist) == 0, 'Unepxected RECIST labels: %s' % out_recist
+        
+        prototype_features = support_set.groupby(self.label_col).mean()
+        prototype_types = prototype_features.index
+        prototype_representation = torch.tensor(prototype_features.values)
+        prototype_representation = F.normalize(prototype_representation, p=2, dim=1)
+        self.prototype_representation = prototype_representation
+        self.prototype_types = prototype_types
+        
+        return self
+
+    
+    def transform(self, query_set):
+        '''
+        query_set: the last column is the RECIST label column
+        '''
+        label_col = query_set.columns[-1]
+        assert label_col == self.label_col, '%s is missing!' % self.label_col
+
+        query_set_features = torch.tensor(query_set[self.feature_col].values)
+        query_set_features = F.normalize(query_set_features, p=2, dim=1)
+        
+        similarities = torch.mm(query_set_features, self.prototype_representation.T) # X*W + B
+        probabilities = F.softmax(similarities / self.temperature, dim=1)
+        
+        probabilities = probabilities.detach().numpy()
+        
+        dfprob = pd.DataFrame(probabilities, index = query_set.index, columns = self.prototype_types)
+        dfpred = dfprob.idxmax(axis=1).map(self.prototype_class_map)
+        dftrue = query_set[self.label_col].map(self.prototype_class_map)
+        
+        dfprob2 = dfprob.copy()
+        dfprob2.columns = dfprob2.columns.map(self.prototype_class_map)
+        dfprob2 = dfprob2.T.reset_index().groupby(self.label_col).sum().T
+        return dfprob2
 

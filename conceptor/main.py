@@ -535,7 +535,7 @@ class FineTuner:
             
         ## init model, operimizer, loss ...
         self._reset_state()
-
+        self.best_epoch = 0
     
     def _init_model_opt(self):
         '''
@@ -685,8 +685,10 @@ class FineTuner:
         if self.save_best_model:
             self.saver.save()
         else:
-            os.system('rm -r %s' % self.save_dir)
+            os.system('rm -r "%s"' % self.save_dir)
         self.performance = performance
+        self.best_epoch = self.saver.inMemorySave['epoch']
+
         return self
 
 
@@ -803,9 +805,10 @@ class FineTuner:
         if self.save_best_model:
             self.saver.save()
         else:
-            os.system('rm -r %s' % self.save_dir)
+            os.system('rm -r "%s"' % self.save_dir)
             
         self.performace = performace
+        self.best_epoch = self.saver.inMemorySave['epoch']
 
         ## plot loss locally
         df = pd.DataFrame(self.performace, columns = ['epochs', 'total_loss', 'ssl_loss', '%s_loss' % self.task_name, 
