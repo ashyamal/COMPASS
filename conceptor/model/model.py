@@ -49,6 +49,7 @@ class Conceptor(nn.Module):
                  transformer_num_layers = 1,
                  transformer_nhead = 2,
                  transformer_pos_emb = 'learnable',
+                 seed = 42,
                  **encoder_kwargs
                 ):
         
@@ -84,8 +85,9 @@ class Conceptor(nn.Module):
         self.task_batch_norms = task_batch_norms
         self.task_dense_layer = task_dense_layer
         self.encoder_kwargs = encoder_kwargs
-
-        fixseed(seed=42)
+        self.seed = seed
+        
+        fixseed(seed=self.seed)
         
         self.inputencoder = TransformerEncoder(num_cancer_types=num_cancer_types,
                                                encoder_type = encoder,
@@ -145,6 +147,7 @@ class Conceptor(nn.Module):
                     'transformer_pos_emb':self.transformer_pos_emb,
                     'task_batch_norms':self.task_batch_norms,
                     'task_dense_layer':self.task_dense_layer,
+                      'seed':self.seed,
                }
 
         model_args.update(encoder_kwargs)        
@@ -155,21 +158,24 @@ class Conceptor(nn.Module):
             self.taskdecoder = RegDecoder(input_dim = self.embed_dim, 
                                         dense_layers = task_dense_layer, 
                                         out_dim = task_dim, 
-                                        batch_norms = task_batch_norms)
+                                        batch_norms = task_batch_norms, 
+                                          seed = self.seed)
         
         ## classification task
         elif task_type == 'c':
             self.taskdecoder = ClassDecoder(input_dim = self.embed_dim, 
                                           dense_layers = task_dense_layer, 
                                           out_dim = task_dim, 
-                                          batch_norms = task_batch_norms)
+                                          batch_norms = task_batch_norms,
+                                            seed = self.seed)
 
         #for softmax classifier
         elif task_type == 'f':
             self.taskdecoder = ProtoNetDecoder(input_dim = self.embed_dim, 
                                                 out_dim = task_dim,
                                                 dense_layers = task_dense_layer, 
-                                                batch_norms = task_batch_norms
+                                                batch_norms = task_batch_norms,
+                                               seed = self.seed
                                                 )
             
             
