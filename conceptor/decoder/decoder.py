@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.init as init
 import torch.nn.functional as F
 from torch.nn import Sequential, Linear, ModuleList, ReLU, Dropout
 from copy import deepcopy 
@@ -59,7 +60,7 @@ class ClassDecoder(nn.Module):
 
     
     def forward(self, x):
-        if self.batch_norms & len(self._batch_norms) == 0:
+        if self.batch_norms & (len(self._batch_norms) == 0):
             x = self.input_norm(x)
         
         for lin, norm in zip(self.lins, self._batch_norms):
@@ -109,7 +110,7 @@ class RegDecoder(nn.Module):
 
 
     def forward(self, x):
-        if self.batch_norms & len(self._batch_norms) == 0:
+        if self.batch_norms & (len(self._batch_norms) == 0):
             x = self.input_norm(x)
             
         for lin, norm in zip(self.lins, self._batch_norms):
@@ -125,10 +126,10 @@ class RegDecoder(nn.Module):
 
 
 class ProtoNetDecoder(nn.Module):
-    def __init__(self, input_dim, out_dim = 2, dense_layers = [],  dropout_p = 0.0, batch_norms = True, temperature=1, seed = 42): 
+    def __init__(self, input_dim, out_dim = 2, dense_layers = [],  dropout_p = 0.0, batch_norms = True, seed = 42): 
         super(ProtoNetDecoder, self).__init__()
 
-        self.temperature = temperature
+       
         self.seed = seed
         fixseed(seed = seed)
 
@@ -158,7 +159,14 @@ class ProtoNetDecoder(nn.Module):
         last_hidden = _dense_layers[-1]
         # We only define the shape of W and b here without initializing them
         self.W = nn.Parameter(torch.Tensor(out_dim, last_hidden))  # Will be initialized later with class means
-        self.b = nn.Parameter(torch.zeros(out_dim))  # Bias initialized as zeros
+        self.b = nn.Parameter(torch.Tensor(out_dim))  # Bias initialized as zeros
+        init.normal_(self.W, mean=0.0, std=0.01)
+        init.normal_(self.b, mean=0.0, std=0.01)
+
+        #self.temperature = temperature
+        self.log_temperature = nn.Parameter(torch.log(torch.tensor(1.0)))
+
+
         self.num_classes = out_dim
         self.feature_dim = input_dim
 
@@ -166,7 +174,7 @@ class ProtoNetDecoder(nn.Module):
     def forward(self, x):
         # Normalize the input features and weights to calculate cosine similarity
 
-        if self.batch_norms & len(self._batch_norms) == 0:
+        if self.batch_norms & (len(self._batch_norms) == 0):
             x = self.input_norm(x)
 
         for lin, norm in zip(self.lins, self._batch_norms):
@@ -184,7 +192,8 @@ class ProtoNetDecoder(nn.Module):
         # Add the bias term
         logits = cosine_similarity + self.b
         # Apply softmax to get probabilities
-        probabilities = F.softmax(logits / self.temperature, dim=1)
+        temperature = torch.exp(self.log_temperature)
+        probabilities = F.softmax(logits / temperature, dim=1)
         return probabilities
 
     
