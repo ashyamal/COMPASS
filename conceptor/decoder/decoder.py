@@ -57,8 +57,8 @@ class ClassDecoder(nn.Module):
         last_hidden = _dense_layers[-1]
         self.out = Linear(last_hidden, out_dim)
         self.softmax = nn.Softmax(dim=1)
+        self.log_temperature = nn.Parameter(torch.log(torch.tensor(1.0)))
 
-    
     def forward(self, x):
         if self.batch_norms & (len(self._batch_norms) == 0):
             x = self.input_norm(x)
@@ -67,61 +67,15 @@ class ClassDecoder(nn.Module):
             if self.batch_norms:
                 x = self.dropout(F.relu(norm(lin(x)), inplace=True))
             else:
-                x = self.dropout(F.relu(lin(x), inplace=True))                
-        y = self.softmax(self.out(x))
+                x = self.dropout(F.relu(lin(x), inplace=True))  
+
+        ## dynamic temperature
+        temperature = torch.exp(self.log_temperature)
+        y = self.softmax(self.out(x) / temperature)
+        
         #y = F.log_softmax(self.out(x), dim=1)
         return y
         
-
-class RegDecoder(nn.Module):
-    def __init__(self, input_dim=32, dense_layers = [], out_dim = 1, dropout_p = 0.0, batch_norms = True, seed = 42):
-        '''
-        Regression
-        '''
-        super(RegDecoder,self).__init__()
-        self.seed = seed
-        fixseed(seed = seed)
-
-        ## Input
-        self.input_norm = torch.nn.BatchNorm1d(input_dim)
-
-        _dense_layers = [input_dim]
-        _dense_layers.extend(dense_layers)
-        self._dense_layers = _dense_layers
-        self.batch_norms = batch_norms
-        
-        ## Dense
-        self.lins = ModuleList()
-        for i in range(len(_dense_layers)-1):
-            lin = Linear(_dense_layers[i], _dense_layers[i+1])
-            self.lins.append(lin)
-
-        ## Batchnorm
-        self._batch_norms = ModuleList()
-        for i in range(len(_dense_layers)-1):
-            self._batch_norms.append(deepcopy(torch.nn.BatchNorm1d(_dense_layers[i+1])))
-
-        ## Dropout
-        self.dropout = nn.Dropout(dropout_p)
-
-        # Output layer
-        last_hidden = _dense_layers[-1]
-        self.out = Linear(last_hidden, out_dim)
-
-
-    def forward(self, x):
-        if self.batch_norms & (len(self._batch_norms) == 0):
-            x = self.input_norm(x)
-            
-        for lin, norm in zip(self.lins, self._batch_norms):
-            if self.batch_norms:
-                x = self.dropout(F.relu(norm(lin(x)), inplace=True))
-            else:
-                x = self.dropout(F.relu(lin(x), inplace=True))                
-        y = self.out(x)
-        return y
-
-
 
 
 
@@ -165,7 +119,7 @@ class ProtoNetDecoder(nn.Module):
 
         #self.temperature = temperature
         self.log_temperature = nn.Parameter(torch.log(torch.tensor(1.0)))
-
+        self.softmax = nn.Softmax(dim=1)
 
         self.num_classes = out_dim
         self.feature_dim = input_dim
@@ -193,7 +147,7 @@ class ProtoNetDecoder(nn.Module):
         logits = cosine_similarity + self.b
         # Apply softmax to get probabilities
         temperature = torch.exp(self.log_temperature)
-        probabilities = F.softmax(logits / temperature, dim=1)
+        probabilities = self.softmax(logits / temperature, dim=1)
         return probabilities
 
     
@@ -273,4 +227,54 @@ class ProtoNetNFTDecoder:
         dfprob2.columns = dfprob2.columns.map(self.prototype_class_map)
         dfprob2 = dfprob2.T.reset_index().groupby(self.label_col).sum().T
         return dfprob2
+
+
+
+class RegDecoder(nn.Module):
+    def __init__(self, input_dim=32, dense_layers = [], out_dim = 1, dropout_p = 0.0, batch_norms = True, seed = 42):
+        '''
+        Regression
+        '''
+        super(RegDecoder,self).__init__()
+        self.seed = seed
+        fixseed(seed = seed)
+
+        ## Input
+        self.input_norm = torch.nn.BatchNorm1d(input_dim)
+
+        _dense_layers = [input_dim]
+        _dense_layers.extend(dense_layers)
+        self._dense_layers = _dense_layers
+        self.batch_norms = batch_norms
+        
+        ## Dense
+        self.lins = ModuleList()
+        for i in range(len(_dense_layers)-1):
+            lin = Linear(_dense_layers[i], _dense_layers[i+1])
+            self.lins.append(lin)
+
+        ## Batchnorm
+        self._batch_norms = ModuleList()
+        for i in range(len(_dense_layers)-1):
+            self._batch_norms.append(deepcopy(torch.nn.BatchNorm1d(_dense_layers[i+1])))
+
+        ## Dropout
+        self.dropout = nn.Dropout(dropout_p)
+
+        # Output layer
+        last_hidden = _dense_layers[-1]
+        self.out = Linear(last_hidden, out_dim)
+
+
+    def forward(self, x):
+        if self.batch_norms & (len(self._batch_norms) == 0):
+            x = self.input_norm(x)
+            
+        for lin, norm in zip(self.lins, self._batch_norms):
+            if self.batch_norms:
+                x = self.dropout(F.relu(norm(lin(x)), inplace=True))
+            else:
+                x = self.dropout(F.relu(lin(x), inplace=True))                
+        y = self.out(x)
+        return y
 
