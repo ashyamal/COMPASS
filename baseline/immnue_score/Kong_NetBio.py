@@ -22,6 +22,6 @@ class Kong_NetBio(GeneSetScorer):
         self.gs = gs
 
     def __call__(self, df_tpm):
-        scols = df_tpm.columns.intersection(self.gene_set)
-        dfres = np.log2(df_tpm[scols] + 1)
-        return dfres
+        data = origAbundance(self.gene_set, self.name)
+        return data.fit_transform(df_tpm)
+

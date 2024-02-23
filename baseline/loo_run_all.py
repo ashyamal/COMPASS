@@ -15,16 +15,15 @@ import warnings
 warnings.filterwarnings("ignore")
 
 
-
-from collections import defaultdict
-
-import scipy.stats as stat
-from statsmodels.stats.multitest import multipletests
-import time, os, math, random
-
-from sklearn.model_selection import cross_val_score, KFold, train_test_split, GridSearchCV, LeaveOneOut
+from sklearn.model_selection import GridSearchCV, LeaveOneOut
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LogisticRegression
+
+
+import sys
+sys.path.insert(0, '/home/was966/Research/mims-conceptor/')
+from baseline.immnue_score import immnue_score_methods
+from conceptor.utils import plot_embed_with_label,plot_performance, score
 
 
 def onehot(S):
@@ -39,11 +38,6 @@ def onehot(S):
 
 
 loo = LeaveOneOut()
-
-from immnue_score import immnue_score_methods
-import sys
-sys.path.insert(0, '/home/was966/Research/mims-conceptor/')
-from conceptor.utils import plot_embed_with_label,plot_performance, score
 
 data_path = '../paper/00_data/'
 df_label = pd.read_pickle(os.path.join(data_path, 'ITRP.PATIENT.TABLE'))
