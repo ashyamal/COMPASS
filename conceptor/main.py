@@ -621,6 +621,7 @@ class FineTuner:
     def tune(self, 
              dfcx_train, 
              dfy_train, 
+             min_mcc = 0.8,
              min_f1 = 0.8, 
              min_roc = 0.8, 
              min_prc = 0.8):
@@ -673,13 +674,15 @@ class FineTuner:
                 print("Epoch: {}/{} - Train roc: {:.4f}, prc: {:.4f}, f1: {:.4f} ".format(epoch+1, self.epochs, train_roc, train_prc, train_f1))
 
             #print(train_f1, train_mcc, train_prc, train_roc, train_acc)
-            saving_criteria = -np.mean([train_f1, train_prc, train_roc])
+            saving_criteria =  -train_mcc
             
             self.saver(saving_criteria, epoch, self.model, self.optimizer, self.scaler) 
             
-            if (train_f1 >= min_f1) & (train_prc >= min_prc) & (train_roc >= min_roc):
-                print("Stopping early at epoch {:2d}. Meet minimal requirements by: f1={:.2f}, prc={:.2f}, roc={:.2f}".format(epoch+1, train_f1, 
-                                                                                                                              train_prc, train_roc))
+            if (train_mcc >= min_mcc) & (train_f1 >= min_f1) & (train_prc >= min_prc) & (train_roc >= min_roc):
+                print("Stopping early at epoch {:2d}. Meet minimal requirements by: f1={:.2f},mcc={:.2f},prc={:.2f}, roc={:.2f}".format(epoch+1, train_f1, 
+                                                                                                                                        train_mcc,
+                                                                                                                                        train_prc, 
+                                                                                                                                        train_roc))
                 break 
 
         if self.save_best_model:
@@ -758,7 +761,7 @@ class FineTuner:
             
             train_f1, train_mcc, train_prc, train_roc, train_acc = Evaluator(train_loader, self.model, self.device)
             train_avg_metric = np.mean([train_f1, train_mcc, train_prc, train_roc, train_acc])
-            saving_criteria =  -train_avg_metric
+            saving_criteria =  -train_mcc
             #print(train_f1, train_mcc, train_prc, train_roc, train_acc)
 
             if test_loader is not None:
@@ -770,7 +773,7 @@ class FineTuner:
                                                                         correction = 0.0,)
 
                 test_avg_metric = np.mean([test_f1, test_mcc, test_prc, test_roc, test_acc])
-                saving_criteria =  -test_avg_metric
+                saving_criteria =  -test_mcc
                 
             else:
                 test_total_loss, test_ssl_loss, test_tsk_loss = np.nan, np.nan, np.nan
