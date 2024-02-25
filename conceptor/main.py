@@ -56,6 +56,8 @@ def loadconceptor(file, **kwargs):
     conceptor = torch.load(file, **kwargs)
     if conceptor.with_wandb:
         conceptor.wandb._settings = ''
+    if kwargs['map_location'] == 'cpu':
+        conceptor.device = 'cpu'
     return conceptor
 
 
