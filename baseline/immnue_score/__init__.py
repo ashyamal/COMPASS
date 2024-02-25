@@ -29,12 +29,12 @@ from .Messina_CKS import Messina_CKS
 from .Nurmik_CAFs import Nurmik_CAFs
 
 from .Rooney_ICA import Rooney_ICA
-
+from .Freeman_PGM import Freeman_PGM
 
 
 immnue_score_methods = {'PD1':PD1, 'PDL1':PDL1, 'CTLA4':CTLA4,  'CD8':CD8,  'GeneBio':GeneBio,  'NetBio':Kong_NetBio,
                         'MIAS': Wu_MIAS, 'GEP':Cristescu_GEP, 'IMPRES':Auslander_IMPRES, 'TIDE':Jiang_TIDE,
-                        'NRS': Huang_NRS, 'IFNG':Ayers_IFNG, 'CIS': Davoli_CIS, 'IS': Roh_IS, 'Fehrenbacher_Teff': Fehrenbacher_Teff,
+                        'NRS': Huang_NRS, 'IFNG':Ayers_IFNG, 'CIS': Davoli_CIS, 'IS': Roh_IS, 'Teff': Fehrenbacher_Teff, 'PGM':Freeman_PGM,
                         'CKS': Messina_CKS, 'CAF': Nurmik_CAFs, 'CTL': Jiang_CTLs, 'TAM': Jiang_TAMs, 'Texh':Jiang_Texh, 'ICA':Rooney_ICA}
 
 
