@@ -372,7 +372,7 @@ class PreTrainer:
     
     def extract(self, df_tpm, batch_size=512,  num_workers=4):
         model = Conceptor(**self.saver.inMemorySave['model_args']) 
-        model.load_state_dict(self.saver.inMemorySave['model_state_dict'])
+        model.load_state_dict(self.saver.inMemorySave['model_state_dict'], strict=False)
         model = model.to(self.device)
         dfg, dfc = Extractor(df_tpm, model, self.scaler, 
                            device = self.device, batch_size=batch_size, 
@@ -840,7 +840,7 @@ class FineTuner:
     
     def extract(self, df_tpm, batch_size=512, num_workers=4):
         model = Conceptor(**self.saver.inMemorySave['model_args']) 
-        model.load_state_dict(self.saver.inMemorySave['model_state_dict'])
+        model.load_state_dict(self.saver.inMemorySave['model_state_dict'], strict=False)
         model = model.to(self.device)
         dfg, dfc = Extractor(df_tpm, model, self.scaler, 
                            device = self.device, batch_size=batch_size, 
