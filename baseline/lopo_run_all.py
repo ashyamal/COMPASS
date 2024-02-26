@@ -70,7 +70,7 @@ cohort_target_map = {'Allen': 'CTLA4','Choueiri': 'PD1', 'Gide': 'PD1_CTLA4',
 for mode in immnue_score_methods.keys():
 
     print('Evaludation on Model %s' % mode)
-    work_dir = './experiment_results/LOO_%s' % (mode)
+    work_dir = './experiment_results/LOPO/LOO_%s' % (mode)
     if not os.path.exists(work_dir):
         os.makedirs(work_dir)
     
