@@ -147,7 +147,7 @@ class ProtoNetDecoder(nn.Module):
         logits = cosine_similarity + self.b
         # Apply softmax to get probabilities
         temperature = torch.exp(self.log_temperature)
-        probabilities = self.softmax(logits / temperature, dim=1)
+        probabilities = self.softmax(logits / temperature)
         return probabilities
 
     
