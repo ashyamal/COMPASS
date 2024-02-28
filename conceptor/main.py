@@ -432,7 +432,7 @@ class FineTuner:
                 triplet_margin=1.,
                 
                 task_loss_weight = 1.0,
-                task_dense_layer = [24],
+                task_dense_layer = [16],
                 task_batch_norms = True,
                 task_class_weight = [1, 2], 
                 batch_correction = 0.0,

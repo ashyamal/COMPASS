@@ -58,14 +58,10 @@ def Trainer(train_loader, model,
 
         ## remove batch effects by minimal the differences between house-keeping genes
         if correction != 0 :
-            #refe = torch.cat([anchor_refg[1], positive_refg[1], negative_refg[1]], axis=0)
-            #refy = torch.cat([anchor_y_true, positive_y_true, negative_y_true], axis=0)
-            #l3 = independence_loss(refe, refy)
-            #ref = reference_gene_loss(refe)  #enlarge the loss to match lss loss
-            ref = reference_consistency_loss(anchor_refg[1], positive_refg[1], negative_refg[1])  
-            #print("Ref: {:.6f} - lss: {:.2f}".format(ref.item(), lss.item()))
+            ref = reference_consistency_loss(anchor_refg[1], positive_refg[1], negative_refg[1]) 
             lss = (1-correction)*lss + correction*ref
-
+            #print("Ref: {:.6f} - lss: {:.2f}".format(ref.item(), lss.item()))
+        
         y_pred = anchor_y_pred #torch.cat([anchor_y_pred, positive_y_pred, negative_y_pred])
         y_true = anchor_y_true #torch.cat([anchor_y_true, positive_y_true, negative_y_true])
         tsk = tsk_loss(y_pred, y_true)
@@ -73,9 +69,8 @@ def Trainer(train_loader, model,
         if entropy_weight != 0 :
             entropy_reg  = entropy_regularization(y_pred)
             tsk = tsk * (1-entropy_weight) + entropy_reg * entropy_weight
-
         
-        loss = (1 - alpha) * lss + alpha * tsk
+        loss = (1.-alpha)*lss + tsk*alpha
         
         #print(cv_loss, lss, loss)
         loss.backward()
@@ -96,7 +91,7 @@ def Trainer(train_loader, model,
 
 @torch.no_grad()
 def Tester(test_loader, model, ssl_loss, tsk_loss, 
-           device, alpha=1., correction = 0):
+           device, alpha=0., correction = 0):
     model.eval()
     total_loss = []
     total_ssl_loss = []
@@ -122,22 +117,15 @@ def Tester(test_loader, model, ssl_loss, tsk_loss,
         lss = ssl_loss(anchor_emb, positive_emb, negative_emb)
         
         if correction != 0 :
-            refg = torch.cat([anchor_refg[0], positive_refg[0], negative_refg[0]], axis=0)
-            refe = torch.cat([anchor_refg[1], positive_refg[1], negative_refg[1]], axis=0)
-            #reference_gene_loss(refe)  #
-            #refy = torch.cat([anchor_y_true, positive_y_true, negative_y_true])
-            ref = reference_consistency_loss(anchor_refg[1], positive_refg[1], negative_refg[1])  
-            #independence_loss(refe, refy)
-            
-            #print("Ref: {:.6f} - lss: {:.2f}".format(ref.item(), lss.item()))
+            ref = reference_consistency_loss(anchor_refg[1], positive_refg[1], negative_refg[1])              
             lss = (1-correction)*lss + correction*ref
-
+            #print("Ref: {:.6f} - lss: {:.2f}".format(ref.item(), lss.item()))
+        
         #torch.cat([anchor_y_pred, positive_y_pred, negative_y_pred], dim = 0)
         y_pred = anchor_y_pred  
         y_true = anchor_y_true
         tsk = tsk_loss(y_pred, y_true)
         
-
         loss = (1.-alpha)*lss + tsk*alpha
 
         total_loss.append(loss.item())
@@ -165,8 +153,10 @@ def scorer(y_true, y_pred):
     y_prob = y_pred[:, 1]
     y_pred = y_pred.argmax(axis=1)
     y_true = y_true.argmax(axis=1)
-    
-    roc = roc_auc_score(y_true, y_prob)
+    if len(np.unique(y_true)) == 1:
+        roc = np.nan
+    else:
+        roc = roc_auc_score(y_true, y_prob)
     _precision, _recall, _ = precision_recall_curve(y_true, y_prob)
     prc = prc_auc_score(_recall, _precision)
     f1 = f1_score(y_true, y_pred)
