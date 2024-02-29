@@ -1,4 +1,4 @@
-from .scorer import score
+from .scorer import score, score2
 
 import pandas as pd
 import numpy as np
@@ -78,7 +78,7 @@ def plot_embed_with_label(dfp, label_col = ['cancer_type'],  label_type = ['c'],
 def plot_performance(y_true, y_prob, y_pred):
     
     from sklearn.metrics import confusion_matrix
-    roc, prc, f1, acc = score(y_true, y_prob, y_pred)
+    roc, prc, f1, acc, mcc = score2(y_true, y_prob, y_pred)
     dfp = pd.DataFrame([y_true, y_prob, y_pred]).T
     dfp.columns = ['Label', 'Pred. Prob.', 'Pred_label']
     dfp.Label = dfp.Label.map({0:'NR', 1:'R'})
@@ -147,8 +147,8 @@ def plot_performance(y_true, y_prob, y_pred):
     
     
     ###################################
-    dfpp = pd.DataFrame([roc, prc, f1, precision, recall], 
-                        index=['ROC', 'PRC', 'F1', 'Prec.', 'Recall'])
+    dfpp = pd.DataFrame([mcc, roc, prc, f1, precision, recall], 
+                        index=['MCC','ROC', 'PRC', 'F1', 'Prec.', 'Recall'])
     
     dfpp.plot(kind = 'barh', ax=ax3, legend=False, color = 'b', alpha = 0.5)
     ax3.yaxis.tick_left() # x axis on top

@@ -91,7 +91,7 @@ class MAEWithNaNLabelsLoss(nn.Module):
         else:
             return torch.tensor(0.0, device=labels.device, dtype=labels.dtype)
 
-
+           
 
 class CEWithNaNLabelsLoss(nn.Module):
     def __init__(self, weights = None):
@@ -116,6 +116,55 @@ class CEWithNaNLabelsLoss(nn.Module):
         else:
             return torch.tensor(0.0, device=labels.device, dtype=labels.dtype)
 
+
+class FocalLoss(nn.Module):
+    '''
+    Focal loss for dense object detection. IEEE Trans. Pattern Anal. Mach. Intell. 42, 318–327 (2020).
+    
+    # 初始化 Focal Loss，类别不平衡, 给予正样本更高的权重，以促进模型对少数类（即正样本）的学习
+    focal_loss = FocalLossWithProbs(alpha=[1/3, 2/3], gamma=2.0)
+
+    predictions = torch.tensor([[0.1, 0.9], [0.8, 0.2], [0.6, 0.4]])
+    labels = torch.tensor([[0, 1], [1, 0], [1, 0]])
+    
+    loss = focal_loss(predictions, labels)
+    print(f'Focal Loss: {loss.item()}')
+    '''
+    def __init__(self, weights=None, gamma=2.0, reduction='mean'):
+        super(FocalLoss, self).__init__()
+        alpha = weights
+        self.gamma = gamma
+        self.reduction = reduction
+        self.alpha = alpha
+        
+        if isinstance(alpha, (float, int, list)):
+            self.alpha = torch.tensor(alpha, dtype=torch.float)
+
+    def forward(self, predictions, labels):
+
+        if labels.dim() > 1:
+            labels = labels.argmax(dim=1)
+
+        pt = torch.gather(predictions, 1, labels.unsqueeze(1)).squeeze()
+
+        if self.alpha is not None:
+            if self.alpha.type() != predictions.data.type():
+                self.alpha = self.alpha.type_as(predictions.data)
+            at = torch.gather(self.alpha, 0, labels)
+        else:
+            at = 1.0
+
+        # Focal Loss
+        log_pt = torch.log(pt)
+        loss = -at * ((1 - pt) ** self.gamma) * log_pt
+        
+        if self.reduction == 'mean':
+            return loss.mean()
+        elif self.reduction == 'sum':
+            return loss.sum()
+        else:
+            return loss
+            
 
 def entropy_regularization(probs):
     """

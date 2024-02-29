@@ -30,7 +30,7 @@ from conceptor.augmentor import RandomMaskAugmentor, FeatureJitterAugmentor, Mas
 from conceptor.model.scaler import Datascaler
 from conceptor.model.model import Conceptor
 from conceptor.model.train import Trainer, Tester, Predictor, Evaluator, Extractor
-from conceptor.model.loss import TripletLoss, CEWithNaNLabelsLoss, MAEWithNaNLabelsLoss
+from conceptor.model.loss import TripletLoss, CEWithNaNLabelsLoss, MAEWithNaNLabelsLoss, FocalLoss
 from conceptor.model.saver import SaveBestModel
 from conceptor.utils import plot_embed_with_label
 
@@ -187,8 +187,10 @@ class PreTrainer:
 
         if task_type == 'c':
             tsk_loss = ce_loss
-        else:
+        elif task_type == 'r':
             tsk_loss = mae_loss
+        else:
+            raise ValueError("Invalid task_type. Use 'c', or 'r'. ")
             
         self.model = model
         self.ssl_loss = ssl_loss
@@ -411,7 +413,6 @@ class PreTrainer:
 
 
 
-
 class FineTuner:
     '''
     Few-shot learning (with <full, partial, head> or without FT) on ITRP datasets
@@ -432,9 +433,12 @@ class FineTuner:
                 triplet_margin=1.,
                 
                 task_loss_weight = 1.0,
+                task_loss_type = 'ce_loss',
+                task_class_weight = [1, 2], 
+                
                 task_dense_layer = [16],
                 task_batch_norms = True,
-                task_class_weight = [1, 2], 
+                
                 batch_correction = 0.0,
                 entropy_weight = 0.0,
                 seed = 42,
@@ -454,7 +458,7 @@ class FineTuner:
         pretrainer: TCGAPreTrainer
         mode: tuning mode{head:LFT, partial: PFT, or full: FFT}
         '''
-        
+
         self.pretrainer = pretrainer.copy()
         self.scaler = self.pretrainer.scaler
         
@@ -471,6 +475,8 @@ class FineTuner:
         self.triplet_margin = triplet_margin
 
         self.task_loss_weight = task_loss_weight
+        self.task_loss_type = task_loss_type
+        
         self.task_dense_layer = task_dense_layer
         self.task_batch_norms = task_batch_norms
         self.task_class_weight = task_class_weight
@@ -505,6 +511,8 @@ class FineTuner:
                        'triplet_metric':self.triplet_metric,
                         'entropy_weight':self.entropy_weight,
                        'task_loss_weight':self.task_loss_weight,
+                        'task_loss_type':self.task_loss_type,
+                       
                        'task_dense_layer':self.task_dense_layer,
                        'task_batch_norms': self.task_batch_norms,
                        'task_class_weight':self.task_class_weight,
@@ -538,6 +546,10 @@ class FineTuner:
         ## init model, operimizer, loss ...
         self._reset_state()
         self.best_epoch = 0
+        
+        __all_loss_type = ['ce_loss', 'focal_loss', 'mae_loss']
+        assert task_loss_type in __all_loss_type, 'Unsupported loss type, please input one of %' % __all_loss_type
+
     
     def _init_model_opt(self):
         '''
@@ -609,12 +621,15 @@ class FineTuner:
         self.saver = SaveBestModel(save_dir = self.save_dir, save_name = 'ft_model.pth')
         ssl_loss = TripletLoss(margin=self.triplet_margin, 
                                metric = self.triplet_metric)
-        ce_loss = CEWithNaNLabelsLoss(weights=self.task_class_weight) 
-        mae_loss = MAEWithNaNLabelsLoss()
-        if self.task_type == 'c':
-            tsk_loss = ce_loss
-        else:
-            tsk_loss = mae_loss
+        
+        if self.task_loss_type == 'ce_loss':
+            tsk_loss = CEWithNaNLabelsLoss(weights=self.task_class_weight) 
+        elif self.task_loss_type == 'focal_loss':
+            tsk_loss = FocalLoss(weights=self.task_class_weight, gamma=2.0)
+            
+        elif self.task_loss_type == 'mae_loss':
+            tsk_loss = MAEWithNaNLabelsLoss()
+
         self.ssl_loss = ssl_loss
         self.tsk_loss = tsk_loss
 
