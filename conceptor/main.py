@@ -29,8 +29,9 @@ from conceptor.dataloader import TCGAData, GeneData, ITRPData
 from conceptor.augmentor import RandomMaskAugmentor, FeatureJitterAugmentor, MaskJitterAugmentor
 from conceptor.model.scaler import Datascaler
 from conceptor.model.model import Conceptor
-from conceptor.model.train import Trainer, Tester, Predictor, Evaluator, Extractor
-from conceptor.model.loss import TripletLoss, CEWithNaNLabelsLoss, MAEWithNaNLabelsLoss, FocalLoss
+from conceptor.model.train import Trainer, Tester, Predictor, Evaluator, Extractor, Projector
+from conceptor.model.loss import TripletLoss, CEWithNaNLabelsLoss, MAEWithNaNLabelsLoss
+from conceptor.model.loss import FocalLoss, DiceLoss, DSCLoss
 from conceptor.model.saver import SaveBestModel
 from conceptor.utils import plot_embed_with_label
 
@@ -336,7 +337,6 @@ class PreTrainer:
                 print(f"Stopping early at epoch {epoch+1}. No improvement in validation loss for {self.patience} consecutive epochs.")
                 break
                 
-
         self.saver.save()
         self.performace = performace
 
@@ -383,7 +383,16 @@ class PreTrainer:
                              num_workers=num_workers)
         return dfg, dfc
         
-    
+
+    def project(self, df_tpm, batch_size=512,  num_workers=4):
+        model = Conceptor(**self.saver.inMemorySave['model_args']) 
+        model.load_state_dict(self.saver.inMemorySave['model_state_dict'])
+        model = model.to(self.device)
+        dfg = Projector(df_tpm, model, self.scaler, 
+                           device = self.device, batch_size=batch_size, 
+                             num_workers=num_workers)
+        return dfg
+        
     def save(self, mfile):
         if self.with_wandb:
             self.wandb._settings = ''
@@ -529,6 +538,10 @@ class FineTuner:
                       }
 
 
+        __all_loss_type = ['ce_loss', 'focal_loss', 'mae_loss', 'dice_loss', 'dsc_loss']
+        assert task_loss_type in __all_loss_type, 'Unsupported loss type, please input one of %' % __all_loss_type
+
+        
         current_time = datetime.datetime.now()
         formatted_time = current_time.strftime("%Y%m%d_%H%M%S")  # Format: YYYYMMDD_HHMMSS
         run_name = f"Finetune_{self.task_name}_{formatted_time}"  # Example filename
@@ -547,8 +560,6 @@ class FineTuner:
         self._reset_state()
         self.best_epoch = 0
         
-        __all_loss_type = ['ce_loss', 'focal_loss', 'mae_loss']
-        assert task_loss_type in __all_loss_type, 'Unsupported loss type, please input one of %' % __all_loss_type
 
     
     def _init_model_opt(self):
@@ -626,10 +637,14 @@ class FineTuner:
             tsk_loss = CEWithNaNLabelsLoss(weights=self.task_class_weight) 
         elif self.task_loss_type == 'focal_loss':
             tsk_loss = FocalLoss(weights=self.task_class_weight, gamma=2.0)
-            
         elif self.task_loss_type == 'mae_loss':
             tsk_loss = MAEWithNaNLabelsLoss()
-
+            
+        elif self.task_loss_type == 'dice_loss':
+            tsk_loss = DiceLoss()
+        elif self.task_loss_type == 'dsc_loss':
+            tsk_loss = DSCLoss()
+            
         self.ssl_loss = ssl_loss
         self.tsk_loss = tsk_loss
 
@@ -863,7 +878,16 @@ class FineTuner:
                            device = self.device, batch_size=batch_size, 
                              num_workers=num_workers)
         return dfg, dfc
-        
+
+
+    def project(self, df_tpm, batch_size=512,  num_workers=4):
+        model = Conceptor(**self.saver.inMemorySave['model_args']) 
+        model.load_state_dict(self.saver.inMemorySave['model_state_dict'])
+        model = model.to(self.device)
+        dfg = Projector(df_tpm, model, self.scaler, 
+                           device = self.device, batch_size=batch_size, 
+                             num_workers=num_workers)
+        return dfg
     
     def plot_embed(self, df_tpm, df_label, label_types, **kwargs):
         

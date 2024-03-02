@@ -269,3 +269,52 @@ def Extractor(dfcx, model, scaler, device = 'cpu', batch_size = 512,  num_worker
     dfcelltype = pd.DataFrame(celltypefeatures, index = predict_tcga.patient_name, columns = model.celltype_feature_name)
     
     return dfgeneset, dfcelltype
+
+
+
+
+@torch.no_grad()
+def Projector(dfcx, model, scaler, device = 'cpu', batch_size = 512,  num_workers=4):
+    '''
+    Extract geneset-level and celltype-level features
+    '''
+    model.eval()
+    dfcx = scaler.transform(dfcx)
+    
+    gs_aggregator = model.latentprojector.genesetprojector.geneset_aggregator
+
+    predict_tcga = GeneData(dfcx)
+    predict_loader = Torchdata.DataLoader(predict_tcga, 
+                                          batch_size=batch_size, 
+                                          shuffle=False,
+                                          pin_memory=True, 
+                                          worker_init_fn = worker_init_fn,
+                                          num_workers=num_workers)
+    geneset_feat = []
+    celltype_feat = []
+
+    for anchor in tqdm(predict_loader, ascii=True):
+        anchor = anchor.to(device)
+        
+        x = model.inputencoder(anchor)
+        
+        pid_encoding = x[:, 0:1, :]  # take the learnbale patient id token 
+        cancer_encoding = x[:, 1:2, :] # take the cancer_type token 
+        gene_encoding = x[:, 2:, :] # take the gene encoding 
+
+        geneset_level_proj = gs_aggregator(x)
+
+        #print(geneset_level_proj.shape)
+        
+        geneset_feat.append(geneset_level_proj)
+
+    gs_feat = torch.concat(geneset_feat, axis=0).cpu().detach().numpy()
+
+    b,f,c = gs_feat.shape
+    feature_name = model.latentprojector.GENESET.index
+    feature_sample_labels = [dfcx.index[i//f] + '$$' + feature_name[i%f] for i in range(b*f)]
+    dfgs = pd.DataFrame(gs_feat.reshape(b*f, c), 
+                        index = feature_sample_labels, 
+                        columns = ['channel_%s' % i for i in range(c)])
+
+    return dfgs
