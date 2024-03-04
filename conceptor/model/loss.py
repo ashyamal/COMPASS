@@ -84,8 +84,8 @@ class MAEWithNaNLabelsLoss(nn.Module):
     def forward(self, predictions, labels):
         mask = ~torch.isnan(labels)[:, 0]  # Assuming labels is a 2D tensor
         if mask.any():
-            mae_loss = torch.mean((predictions[mask] - labels[mask]) ** 2)
-            #mae_loss = torch.mean(torch.abs(predictions[mask] - labels[mask]))
+            #mae_loss = torch.mean((predictions[mask] - labels[mask]) ** 2)
+            mae_loss = torch.mean(torch.abs(predictions[mask] - labels[mask]))
             
             return mae_loss
         else:
@@ -165,6 +165,49 @@ class FocalLoss(nn.Module):
         else:
             return loss
             
+
+
+class DiceLoss(nn.Module):
+    def __init__(self, epsilon=1e-5):
+        super(DiceLoss, self).__init__()
+        self.epsilon = epsilon
+
+    def forward(self, predictions, targets):
+        predictions = predictions.view(-1)
+        targets = targets.view(-1)
+        intersection = (predictions * targets).sum()
+        union = predictions.sum() + targets.sum()
+        dice_coeff = (2. * intersection + self.epsilon) / (union + self.epsilon)
+        dice_loss = 1 - dice_coeff
+        return dice_loss
+
+class DSCLoss(nn.Module):
+    def __init__(self, alpha: float = 1.0, smooth: float = 1.0, reduction: str = "mean"):
+        super(DSCLoss, self).__init__()
+        self.alpha = alpha
+        self.smooth = smooth
+        self.reduction = reduction
+
+    def forward(self, probs, targets):
+        targets = targets.float()
+        intersection = (probs * targets).sum(dim=1)
+        weighted_intersection = (2. * intersection + self.smooth) ** self.alpha
+
+        cardinality = (probs + targets).sum(dim=1)
+        weighted_cardinality = (cardinality + self.smooth) ** self.alpha
+        dice_coeff = weighted_intersection / weighted_cardinality
+        dice_loss = 1 - dice_coeff
+        if self.reduction == "mean":
+            return dice_loss.mean()
+        elif self.reduction == "sum":
+            return dice_loss.sum()
+        else:
+            return dice_loss
+
+
+
+
+
 
 def entropy_regularization(probs):
     """

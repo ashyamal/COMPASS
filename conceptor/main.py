@@ -30,8 +30,7 @@ from conceptor.augmentor import RandomMaskAugmentor, FeatureJitterAugmentor, Mas
 from conceptor.model.scaler import Datascaler
 from conceptor.model.model import Conceptor
 from conceptor.model.train import PT_Trainer, PT_Tester
-from conceptor.model.tune import FT_Trainer, FT_Tester
-from conceptor.model.tune import Predictor, Evaluator, Extractor, Projector
+from conceptor.model.tune import FT_Trainer, FT_Tester, Predictor, Evaluator, Extractor, Projector
 
 from conceptor.model.loss import TripletLoss, CEWithNaNLabelsLoss, MAEWithNaNLabelsLoss
 from conceptor.model.loss import FocalLoss, DiceLoss, DSCLoss
@@ -389,7 +388,7 @@ class PreTrainer:
 
     def project(self, df_tpm, batch_size=512,  num_workers=4):
         model = Conceptor(**self.saver.inMemorySave['model_args']) 
-        model.load_state_dict(self.saver.inMemorySave['model_state_dict'])
+        model.load_state_dict(self.saver.inMemorySave['model_state_dict'], strict=False)
         model = model.to(self.device)
         dfg, dfc = Projector(df_tpm, model, self.scaler, 
                            device = self.device, batch_size=batch_size, 
@@ -882,16 +881,15 @@ class FineTuner:
                              num_workers=num_workers)
         return dfg, dfc
 
-    
+
     def project(self, df_tpm, batch_size=512,  num_workers=4):
         model = Conceptor(**self.saver.inMemorySave['model_args']) 
-        model.load_state_dict(self.saver.inMemorySave['model_state_dict'])
+        model.load_state_dict(self.saver.inMemorySave['model_state_dict'], strict=False)
         model = model.to(self.device)
         dfg, dfc = Projector(df_tpm, model, self.scaler, 
                            device = self.device, batch_size=batch_size, 
                              num_workers=num_workers)
         return dfg, dfc
-        
     
     def plot_embed(self, df_tpm, df_label, label_types, **kwargs):
         
@@ -974,4 +972,3 @@ class FineTuner:
         best_epochs = int(np.array(best_epochs).mean())
     
         return best_epochs
-

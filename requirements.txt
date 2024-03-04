@@ -11,3 +11,4 @@ statannotations==0.6.0
 comut
 gseapy ##ssGSEA
 tidepy # TIDE score
+colorcet

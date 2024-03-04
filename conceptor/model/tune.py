@@ -271,18 +271,16 @@ def Extractor(dfcx, model, scaler, device = 'cpu', batch_size = 512,  num_worker
 
 
 
-
 @torch.no_grad()
-def Projector(dfcx, model, scaler, device = 'cpu', batch_size = 512,  num_workers=4):
+def Projector(dfcx, model, scaler, device = 'cpu', batch_size = 64,  num_workers=4):
     '''
     Extract geneset-level and celltype-level features
     '''
+
     model.eval()
-    dfcx = scaler.transform(dfcx)
-
-    genesetprojector = model.latentprojector.genesetprojector
-    cellpathwayprojector = model.latentprojector.cellpathwayprojector
-
+    gs_projector = model.latentprojector.genesetprojector
+    ct_projector = model.latentprojector.cellpathwayprojector
+    
     predict_tcga = GeneData(dfcx)
     predict_loader = Torchdata.DataLoader(predict_tcga, 
                                           batch_size=batch_size, 
@@ -292,41 +290,49 @@ def Projector(dfcx, model, scaler, device = 'cpu', batch_size = 512,  num_worker
                                           num_workers=num_workers)
     geneset_feat = []
     celltype_feat = []
-
+    
     for anchor in tqdm(predict_loader, ascii=True):
         anchor = anchor.to(device)
-        
+    
         x = model.inputencoder(anchor)
-        
         pid_encoding = x[:, 0:1, :]  # take the learnbale patient id token 
         cancer_encoding = x[:, 1:2, :] # take the cancer_type token 
         gene_encoding = x[:, 2:, :] # take the gene encoding 
-
-        geneset_f = genesetprojector(x)
-        cellpathway_f = cellpathwayprojector(geneset_f)
-
-        geneset_feat.append(geneset_f)
-        celltype_feat.append(cellpathway_f)
         
-    geneset_feats = torch.concat(geneset_feat, axis=0).cpu().detach().numpy()
-    celltype_feats = torch.concat(celltype_feat, axis=0).cpu().detach().numpy()
-
+        geneset_level_proj = gs_projector.geneset_aggregator(x)
+        
+        b,f,c = geneset_level_proj.shape
+        
+        ct_feats = []
+        for i in range(c):
+            ct_ = ct_projector(geneset_level_proj[:,:,i])
+            ct_ = ct_.cpu().detach().numpy()
+            ct_feats.append(ct_)
+            
+        celltype_level_proj = np.stack(ct_feats, axis=-1)
+        geneset_level_proj = geneset_level_proj.cpu().detach().numpy()
+        
+        geneset_feat.append(geneset_level_proj)
+        celltype_feat.append(celltype_level_proj)
     
-    b,f,c = geneset_feats.shape
-    feature_name = genesetprojector.CONCEPT.index
+    
+    gs_feat = np.concatenate(geneset_feat, axis=0)
+    ct_feat = np.concatenate(celltype_feat, axis=0)
+    
+    b,f,c = gs_feat.shape
+    feature_name = model.latentprojector.GENESET.index
+    feature_sample_labels = [dfcx.index[i//f] + '$$' + feature_name[i%f] for i in range(b*f)]
+    dfgs = pd.DataFrame(gs_feat.reshape(b*f, c), 
+                        index = feature_sample_labels, 
+                        columns = ['channel_%s' % i for i in range(c)])
+    
+    
+    b,f,c = ct_feat.shape
+    feature_name = model.latentprojector.CELLPATHWAY.index
     index = [dfcx.index[i//f] + '$$' + feature_name[i%f] for i in range(b*f)]
     columns = ['channel_%s' % i for i in range(c)]
-    dfgs = pd.DataFrame(geneset_feats.reshape(b*f, c), 
+    dfct = pd.DataFrame(ct_feat.reshape(b*f, c), 
                         index = index, 
                         columns = columns)
-
-
-    b,f,c = celltype_feats.shape
-    feature_name = cellpathwayprojector.CONCEPT.index
-    index = [dfcx.index[i//f] + '$$' + feature_name[i%f] for i in range(b*f)]
-    columns = ['channel_%s' % i for i in range(c)]
-    dfct = pd.DataFrame(celltype_feats.reshape(b*f, c), 
-                        index = index, 
-                        columns = columns)
-    
     return dfgs, dfct
+    

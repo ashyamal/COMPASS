@@ -60,7 +60,7 @@ def PT_Trainer(train_loader, model,
         if correction != 0 :
             ref = reference_consistency_loss(anchor_refg[1], positive_refg[1], negative_refg[1]) 
             lss = (1-correction)*lss + correction*ref
-            print("Ref: {:.3f} - lss: {:.3f}".format(ref.item(), lss.item()))
+            #print("Ref: {:.6f} - lss: {:.2f}".format(ref.item(), lss.item()))
         
         y_pred = anchor_y_pred #torch.cat([anchor_y_pred, positive_y_pred, negative_y_pred])
         y_true = anchor_y_true #torch.cat([anchor_y_true, positive_y_true, negative_y_true])
@@ -117,7 +117,7 @@ def PT_Tester(test_loader, model, ssl_loss, tsk_loss,
         lss = ssl_loss(anchor_emb, positive_emb, negative_emb)
         
         if correction != 0 :
-            ref = reference_consistency_loss(anchor_refg[1], positive_refg[1], negative_refg[1])  
+            ref = reference_consistency_loss(anchor_refg[1], positive_refg[1], negative_refg[1])              
             lss = (1-correction)*lss + correction*ref
             #print("Ref: {:.6f} - lss: {:.2f}".format(ref.item(), lss.item()))
         

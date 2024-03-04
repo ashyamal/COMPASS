@@ -172,7 +172,7 @@ class DisentangledProjector(nn.Module):
         gene_encoding = x[:, 2:, :] # take the gene encoding 
 
         geneset_scores = self.genesetprojector(gene_encoding)
-        cellpathway_scores = self.cellpathwayprojector(geneset_scores)
+        cellpathway_scores = self.cellpathwayprojector(geneset_scores) 
 
         if self.proj_pid and self.proj_cancer_type:
             cancer_scores = self.cancerprojector(cancer_encoding)
