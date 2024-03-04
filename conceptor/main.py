@@ -29,7 +29,10 @@ from conceptor.dataloader import TCGAData, GeneData, ITRPData
 from conceptor.augmentor import RandomMaskAugmentor, FeatureJitterAugmentor, MaskJitterAugmentor
 from conceptor.model.scaler import Datascaler
 from conceptor.model.model import Conceptor
-from conceptor.model.train import Trainer, Tester, Predictor, Evaluator, Extractor, Projector
+from conceptor.model.train import PT_Trainer, PT_Tester
+from conceptor.model.tune import FT_Trainer, FT_Tester
+from conceptor.model.tune import Predictor, Evaluator, Extractor, Projector
+
 from conceptor.model.loss import TripletLoss, CEWithNaNLabelsLoss, MAEWithNaNLabelsLoss
 from conceptor.model.loss import FocalLoss, DiceLoss, DSCLoss
 from conceptor.model.saver import SaveBestModel
@@ -281,13 +284,13 @@ class PreTrainer:
         best_val_loss = float('inf') 
         patience_counter = 0  
         for epoch in range(self.epochs):
-            train_total_loss, train_ssl_loss, train_tsk_loss = Trainer(train_loader, self.model, self.optimizer, 
+            train_total_loss, train_ssl_loss, train_tsk_loss = PT_Trainer(train_loader, self.model, self.optimizer, 
                                                                         self.ssl_loss, self.tsk_loss, self.device, 
                                                                         alpha = self.task_loss_weight, 
                                                                         correction = self.batch_correction)
 
             if test_loader is not None:
-                test_total_loss, test_ssl_loss, test_tsk_loss = Tester(test_loader, self.model, self.ssl_loss, 
+                test_total_loss, test_ssl_loss, test_tsk_loss = PT_Tester(test_loader, self.model, self.ssl_loss, 
                                                                         self.tsk_loss, self.device, 
                                                                         alpha = self.task_loss_weight,
                                                                         correction = self.batch_correction)
@@ -388,10 +391,10 @@ class PreTrainer:
         model = Conceptor(**self.saver.inMemorySave['model_args']) 
         model.load_state_dict(self.saver.inMemorySave['model_state_dict'])
         model = model.to(self.device)
-        dfg = Projector(df_tpm, model, self.scaler, 
+        dfg, dfc = Projector(df_tpm, model, self.scaler, 
                            device = self.device, batch_size=batch_size, 
                              num_workers=num_workers)
-        return dfg
+        return dfg, dfc
         
     def save(self, mfile):
         if self.with_wandb:
@@ -690,7 +693,7 @@ class FineTuner:
         self.saver(best_criteria, 0, self.model, self.optimizer, self.scaler)
 
         for epoch in tqdm(range(self.max_epochs), ascii=True):
-            train_total_loss, train_ssl_loss, train_tsk_loss = Trainer(train_loader, self.model, self.optimizer, 
+            train_total_loss, train_ssl_loss, train_tsk_loss = FT_Trainer(train_loader, self.model, self.optimizer, 
                                                                         self.ssl_loss, self.tsk_loss, self.device, 
                                                                         alpha = self.task_loss_weight, 
                                                                         correction = self.batch_correction,
@@ -784,7 +787,7 @@ class FineTuner:
         best_val_loss = float('inf')
         patience_counter = 0
         for epoch in tqdm(range(self.max_epochs), ascii=True):
-            train_total_loss, train_ssl_loss, train_tsk_loss = Trainer(train_loader,  self.model, self.optimizer, 
+            train_total_loss, train_ssl_loss, train_tsk_loss = FT_Trainer(train_loader,  self.model, self.optimizer, 
                                                                         self.ssl_loss, self.tsk_loss, self.device, 
                                                                         alpha = self.task_loss_weight, 
                                                                         correction = self.batch_correction,
@@ -799,7 +802,7 @@ class FineTuner:
             if test_loader is not None:
                 test_f1, test_mcc, test_prc, test_roc, test_acc = Evaluator(test_loader, self.model, self.device)
                 
-                test_total_loss, test_ssl_loss, test_tsk_loss = Tester(test_loader, self.model, self.ssl_loss, 
+                test_total_loss, test_ssl_loss, test_tsk_loss = FT_Tester(test_loader, self.model, self.ssl_loss, 
                                                                         self.tsk_loss, self.device, 
                                                                         alpha =self.task_loss_weight,
                                                                         correction = 0.0,)
@@ -879,15 +882,16 @@ class FineTuner:
                              num_workers=num_workers)
         return dfg, dfc
 
-
+    
     def project(self, df_tpm, batch_size=512,  num_workers=4):
         model = Conceptor(**self.saver.inMemorySave['model_args']) 
         model.load_state_dict(self.saver.inMemorySave['model_state_dict'])
         model = model.to(self.device)
-        dfg = Projector(df_tpm, model, self.scaler, 
+        dfg, dfc = Projector(df_tpm, model, self.scaler, 
                            device = self.device, batch_size=batch_size, 
                              num_workers=num_workers)
-        return dfg
+        return dfg, dfc
+        
     
     def plot_embed(self, df_tpm, df_label, label_types, **kwargs):
         

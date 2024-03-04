@@ -21,7 +21,7 @@ def worker_init_fn(worker_id):
 
 
 
-def Trainer(train_loader, model, 
+def FT_Trainer(train_loader, model, 
             optimizer, ssl_loss, 
             tsk_loss, device, 
             alpha=0.0, 
@@ -90,7 +90,7 @@ def Trainer(train_loader, model,
 
 
 @torch.no_grad()
-def Tester(test_loader, model, ssl_loss, tsk_loss, 
+def FT_Tester(test_loader, model, ssl_loss, tsk_loss, 
            device, alpha=0., correction = 0):
     model.eval()
     total_loss = []
@@ -137,7 +137,6 @@ def Tester(test_loader, model, ssl_loss, tsk_loss,
     test_tsk_loss = np.mean(total_tsk_loss)
     
     return test_total_loss, test_ssl_loss, test_tsk_loss
-
 
 
 
@@ -269,3 +268,65 @@ def Extractor(dfcx, model, scaler, device = 'cpu', batch_size = 512,  num_worker
     dfcelltype = pd.DataFrame(celltypefeatures, index = predict_tcga.patient_name, columns = model.celltype_feature_name)
     
     return dfgeneset, dfcelltype
+
+
+
+
+@torch.no_grad()
+def Projector(dfcx, model, scaler, device = 'cpu', batch_size = 512,  num_workers=4):
+    '''
+    Extract geneset-level and celltype-level features
+    '''
+    model.eval()
+    dfcx = scaler.transform(dfcx)
+
+    genesetprojector = model.latentprojector.genesetprojector
+    cellpathwayprojector = model.latentprojector.cellpathwayprojector
+
+    predict_tcga = GeneData(dfcx)
+    predict_loader = Torchdata.DataLoader(predict_tcga, 
+                                          batch_size=batch_size, 
+                                          shuffle=False,
+                                          pin_memory=True, 
+                                          worker_init_fn = worker_init_fn,
+                                          num_workers=num_workers)
+    geneset_feat = []
+    celltype_feat = []
+
+    for anchor in tqdm(predict_loader, ascii=True):
+        anchor = anchor.to(device)
+        
+        x = model.inputencoder(anchor)
+        
+        pid_encoding = x[:, 0:1, :]  # take the learnbale patient id token 
+        cancer_encoding = x[:, 1:2, :] # take the cancer_type token 
+        gene_encoding = x[:, 2:, :] # take the gene encoding 
+
+        geneset_f = genesetprojector(x)
+        cellpathway_f = cellpathwayprojector(geneset_f)
+
+        geneset_feat.append(geneset_f)
+        celltype_feat.append(cellpathway_f)
+        
+    geneset_feats = torch.concat(geneset_feat, axis=0).cpu().detach().numpy()
+    celltype_feats = torch.concat(celltype_feat, axis=0).cpu().detach().numpy()
+
+    
+    b,f,c = geneset_feats.shape
+    feature_name = genesetprojector.CONCEPT.index
+    index = [dfcx.index[i//f] + '$$' + feature_name[i%f] for i in range(b*f)]
+    columns = ['channel_%s' % i for i in range(c)]
+    dfgs = pd.DataFrame(geneset_feats.reshape(b*f, c), 
+                        index = index, 
+                        columns = columns)
+
+
+    b,f,c = celltype_feats.shape
+    feature_name = cellpathwayprojector.CONCEPT.index
+    index = [dfcx.index[i//f] + '$$' + feature_name[i%f] for i in range(b*f)]
+    columns = ['channel_%s' % i for i in range(c)]
+    dfct = pd.DataFrame(celltype_feats.reshape(b*f, c), 
+                        index = index, 
+                        columns = columns)
+    
+    return dfgs, dfct
