@@ -177,16 +177,12 @@ class Conceptor(nn.Module):
                                                 batch_norms = task_batch_norms,
                                                seed = self.seed
                                                 )
-            
-            
 
     
-            
     def forward(self, x):
 
         #output： B,L+2, (dataset:1, cancer:1, gene),C
         encoding = self.inputencoder(x)
-        
         geneset_level_proj, cellpathway_level_proj = self.latentprojector(encoding)
         
         # task_inputs: only input the context-oriented features (for downstream task)
