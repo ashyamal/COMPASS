@@ -59,7 +59,7 @@ class TCGAData(Dataset):
         X = torch.tensor(dfcx.values,dtype=torch.float32).clone().detach()
         self.X = X
 
-        y_scaler = MinMaxScaler()
+        y_scaler = NoScaler()
         y = y_scaler.fit_transform(dfy.values)
         self.y = torch.tensor(y, dtype=torch.float32).clone().detach()
         self.y_scaler = y_scaler

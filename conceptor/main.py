@@ -426,21 +426,25 @@ class PreTrainer:
 class Adapter:
 
     def __init__(self, pretrainer, adp_feature = 'TMB', lr = 1e-3, weight_decay = 1e-6, 
-                 batch_size=32, max_epochs=100, save_dir = './', verbose = True, save_best_model = False):
+                 batch_size=128, epochs=100, patience = 10, save_dir = './', verbose = True, with_wandb = False, save_best_model = False):
         self.lr = lr
         self.weight_decay = weight_decay
-        self.max_epochs = max_epochs
-        self.pretrainer = pretrainer
+        self.epochs = epochs
+        self.patience = patience
+        self.pretrainer = pretrainer.copy()
         self.adp_feature = adp_feature
         self.batch_size = batch_size
         self.save_dir = save_dir
+        self.with_wandb = with_wandb
         
         self._init_adaptive_model(Key = self.adp_feature)
         self.verbose = verbose
         self.save_best_model = save_best_model
         self.scaler = pretrainer.scaler
         self.device = pretrainer.device
-        
+
+
+    
     def _init_adaptive_model(self, Key = 'TMB'):
         
         fixseed(self.pretrainer.seed)  # Resets the random seed
@@ -459,18 +463,19 @@ class Adapter:
         model = model.to(self.pretrainer.device)
         
         ctp_idx = model.latentprojector.cellpathwayprojector.CELLPATHWAY.index.tolist().index(Key)
+        proj_idx = model.latentprojector.cellpathway_proj_cols.index(Key)
+        
         ctp_name = "cellpathway_%s" % ctp_idx 
         
         gs_idx_list = model.latentprojector.cellpathwayprojector.CELLPATHWAY.loc[Key]
         gs_name_list = ["geneset_%s" % idx for idx in gs_idx_list]
         
-        plist = []
+        
         for key, param in model.latentprojector.cellpathwayprojector.named_parameters():
             key_idx = key.split('.')[-1]
             if key_idx == ctp_name:
                 print(key)
                 param.requires_grad = True
-                plist.append({'params': param})
             else:
                 param.requires_grad = False
         
@@ -479,7 +484,6 @@ class Adapter:
             if key_idx in gs_name_list:
                 print(key)
                 param.requires_grad = True
-                plist.append({'params': param})
             else:
                 param.requires_grad = False
         
@@ -494,17 +498,24 @@ class Adapter:
         
         for param in model.taskdecoder.parameters():
             param.requires_grad = False
+
+        plist = []
+        for param in model.parameters():
+            if param.requires_grad:
+                plist.append({'params': param})
+
         
         optimizer = torch.optim.Adam(plist, lr = self.lr, weight_decay = self.weight_decay)
         loss = MAEWithNaNLabelsLoss()
         saver = SaveBestModel(save_dir = self.save_dir, save_name = 'adp_model.pth')
 
         self.model = model
-        self.adp_idx = ctp_idx
+        self.proj_idx = proj_idx
         self.optimizer = optimizer
         self.loss = loss
         self.saver = saver
-
+        plist.append({'params': param})
+        
 
     
     def adapt(self, dfcx_train, dfy_train, dfcx_test = None, dfy_test = None):
@@ -512,9 +523,10 @@ class Adapter:
         dfcx_train = self.scaler.transform(dfcx_train)
 
         augmentor = RandomMaskAugmentor(no_augment_prob = 1) #no aug
+        
         train_itrp = TCGAData(dfcx_train, dfy_train, augmentor, K = 1)
         train_loader = data.DataLoader(train_itrp, batch_size=self.batch_size, 
-                                       shuffle=True, drop_last=True, 
+                                       shuffle=True, drop_last=False, 
                                        worker_init_fn = worker_init_fn,
                                        pin_memory=True, num_workers=4) #
         
@@ -522,28 +534,27 @@ class Adapter:
             dfcx_test = self.scaler.transform(dfcx_test)
             test_itrp = TCGAData(dfcx_test, dfy_test, augmentor, K = 1)
             test_loader = data.DataLoader(test_itrp, 
-                                          batch_size=self.batch_size, 
-                                          shuffle=False,
+                                          batch_size = self.batch_size, 
+                                          shuffle = False,
                                           worker_init_fn = worker_init_fn,
-                                          pin_memory=True, num_workers=4)
+                                          pin_memory = True, num_workers=4)
         else:
             test_loader = None
-
 
         ### training ###
         performace = []
         best_val_loss = float('inf')
         patience_counter = 0
-        for epoch in tqdm(range(self.max_epochs), ascii=True):
+        for epoch in tqdm(range(self.epochs), ascii=True):
 
             train_total_loss  = Adp_Trainer(train_loader,  self.model, self.optimizer, 
-                                            self.loss, self.device, self.adp_idx)
+                                            self.loss, self.device, self.proj_idx)
 
             saving_criteria =  train_total_loss
 
             if test_loader is not None:
                 test_total_loss = Adp_Tester(test_loader, self.model, self.optimizer, 
-                                            self.loss, self.device, self.adp_idx)
+                                            self.loss, self.device, self.proj_idx)
 
                 saving_criteria =  test_total_loss
                 
@@ -585,6 +596,10 @@ class Adapter:
         
         return self.pretrainer
         
+
+    def count_parameters(self):
+        return sum(p.numel() for p in self.model.parameters() if p.requires_grad)
+
 
 
 class FineTuner:
