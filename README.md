@@ -1,4 +1,5 @@
-# Concept-based pre-trained pan-cancer models for enhanced clinical immunotherapy response prediction
+# COMPACTOR: COncept-based pre-trained Models for enhanced PAn-Cancer immunoTherapy response prediction
+
 
 
 
