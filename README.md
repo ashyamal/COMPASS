@@ -1,4 +1,4 @@
-## Concept-based pre-trained models for enhanced pan-Cancer immunotherapy response prediction
+## Concept-based pre-trained models for enhanced pan-cancer immunotherapy response prediction
 
 
 * Concept-based Approach: The study employs a concept-based methodology, which involves categorizing and analyzing various concepts or features related to the tumor microenvironment, immune system interactions, and treatment responses.
