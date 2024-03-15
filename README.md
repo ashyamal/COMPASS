@@ -1,7 +1,7 @@
 ## Concept-based pre-trained pan-cancer models for enhanced immunotherapy response prediction
 
 
-* Concept-based Approach: The study employs a concept-based methodology, which involves categorizing and analyzing various concepts or features related to the tumor microenvironment, immune system interactions, and treatment responses.
+* Concept-based Approach: The study employs a concept-based methodology, which involves categorizing and analyzing various TIME-concepts or features related to the tumor microenvironment, immune system interactions, and treatment responses.
 
 * Pre-trained Models: The models used in the study are pre-trained, indicating that they have been initially trained on a large TCGA dataset to learn patterns and relationships before being fine-tuned for specific tasks related to immunotherapy response prediction.
 
