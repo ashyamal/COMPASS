@@ -1,7 +1,26 @@
 <a href="url"><img src="./misc/logo.jpg" align="left" height="150" width="130" ></a>
 [![Dataset](https://img.shields.io/badge/datasets-ITRP-green)](https://github.com/)
 
+# Install
+```bash
+git clone https://github.com/mims-harvard/conceptor.git
+cd conceptor
+pip install -r ./requirements.txt
+```
 
+
+# Import
+```python
+import sys
+sys.instert(0, 'you_path/conceptor')
+from conceptor import *
+```
+
+
+
+
+
+# About
 ----
 ## Concept-based pre-trained pan-cancer models for enhanced immunotherapy response prediction
 
