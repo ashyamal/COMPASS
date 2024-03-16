@@ -21,8 +21,9 @@ sys.instert(0, 'you_path/conceptor')
 from conceptor import *
 ```
 
-
-
+  * 1. Extract the pretrained 45 concepts (cell types, pathways, functional groups)
+  * 2. Make prediction based on a fintuned model (fintuned by 1133 ITRP patients)
+  * 3. Fintune your own model by your won data
 
 
 # About
