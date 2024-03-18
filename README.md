@@ -17,7 +17,7 @@ pip install -r ./requirements.txt
 # Import
 ```python
 import sys
-sys.instert(0, 'your_path/conceptor')
+sys.path.insert(0, 'your_path/conceptor')
 from conceptor import FineTuner, loadconceptor
 ```
   * Prepare input data
