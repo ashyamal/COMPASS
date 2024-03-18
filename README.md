@@ -17,8 +17,8 @@ pip install -r ./requirements.txt
 # Import
 ```python
 import sys
-sys.instert(0, 'you_path/conceptor')
-from conceptor import *
+sys.instert(0, 'your_path/conceptor')
+from conceptor import FineTuner, loadconceptor
 ```
   * Prepare input data
   * Extract the pretrained 45 concepts (cell types, pathways, functional groups)
