@@ -1,9 +1,34 @@
 <a href="url"><img src="./misc/logo.jpg" align="left" height="150" width="130" ></a>
-[![Dataset](https://img.shields.io/badge/datasets-ITRP-green)](https://github.com/)
 
 
-----
+[![Dataset](https://img.shields.io/badge/datasets-ITRP-green)](https://zitniklab.hms.harvard.edu/conceptor-101/data)
 ## Concept-based pre-trained pan-cancer models for enhanced immunotherapy response prediction
+
+-----
+
+# Install
+```bash
+git clone https://github.com/mims-harvard/conceptor.git
+cd conceptor
+pip install -r ./requirements.txt
+```
+
+
+# Import
+```python
+import sys
+sys.path.insert(0, 'your_path/conceptor')
+from conceptor import FineTuner, loadconceptor
+```
+  * Prepare input data
+  * Extract the pretrained 45 concepts (cell types, pathways, functional groups)
+  * Make prediction based on a fintuned model (fintuned by 1133 ITRP patients)
+  * Fintune a model by your own data
+
+# Conceptor 101
+
+# About
+----
 
 
 * Concept-based Approach: The study employs a concept-based methodology, which involves categorizing and analyzing various TIME-concepts or features related to the tumor microenvironment, immune system interactions, and treatment responses.
