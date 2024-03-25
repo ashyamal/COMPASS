@@ -542,7 +542,7 @@ class Adapter:
             test_loader = None
 
         ### training ###
-        performace = []
+        performance = []
         best_val_loss = float('inf')
         patience_counter = 0
         for epoch in tqdm(range(self.epochs), ascii=True):
@@ -570,7 +570,7 @@ class Adapter:
             else:
                 patience_counter += 1
 
-            performace.append([epoch, train_total_loss, test_total_loss])
+            performance.append([epoch, train_total_loss, test_total_loss])
 
             if self.with_wandb:
                 self.wandb.log({"train_loss": train_total_loss, 
@@ -588,7 +588,7 @@ class Adapter:
         else:
             os.system('rm -r "%s"' % self.save_dir)
             
-        self.performace = performace
+        self.performance = performance
         self.best_epoch = self.saver.inMemorySave['epoch']
 
         self.pretrainer.saver = self.saver
@@ -913,7 +913,9 @@ class FineTuner:
                          dfy_train,
                          dfcx_test = None, 
                          dfy_test = None,
-                        ):
+                         min_roc = 0.8, 
+                         min_prc = 0.7,
+                         min_mcc = 0.0):
 
         
         self._reset_state()
@@ -960,7 +962,7 @@ class FineTuner:
             
 
         ### training ###
-        performace = []
+        performance = []
         best_val_loss = float('inf')
         patience_counter = 0
         for epoch in tqdm(range(self.max_epochs), ascii=True):
@@ -1000,7 +1002,7 @@ class FineTuner:
                 patience_counter += 1
                 
 
-            performace.append([epoch, train_total_loss, train_ssl_loss, train_tsk_loss, 
+            performance.append([epoch, train_total_loss, train_ssl_loss, train_tsk_loss, 
                                test_total_loss, test_ssl_loss, test_tsk_loss])
 
             if self.with_wandb:
@@ -1014,19 +1016,15 @@ class FineTuner:
             if self.verbose:
                 print("Epoch: {}/{} - Train Loss: {:.4f} - Test Loss: {:.4f}".format(epoch+1, self.epochs, train_total_loss, test_total_loss))
 
-            if (patience_counter >= self.patience) & (train_roc > 0.8) & (train_prc > 0.7):
+            if (patience_counter >= self.patience) & (train_roc > min_roc) & (train_prc > min_prc)  & (train_mcc > min_mcc):
                 print(f"Stopping early at epoch {epoch+1}. No improvement in validation loss for {self.patience} consecutive epochs.")
                 break
-        if self.save_best_model:
-            self.saver.save()
-        else:
-            os.system('rm -r "%s"' % self.save_dir)
             
-        self.performace = performace
+        self.performance = performance
         self.best_epoch = self.saver.inMemorySave['epoch']
 
         ## plot loss locally
-        df = pd.DataFrame(self.performace, columns = ['epochs', 'total_loss', 'ssl_loss', '%s_loss' % self.task_name, 
+        df = pd.DataFrame(self.performance, columns = ['epochs', 'total_loss', 'ssl_loss', '%s_loss' % self.task_name, 
                                                       'test_loss', 'test_ssl_loss', 'test_%s_loss' % self.task_name]).set_index('epochs')
         #v = (df - df.min(axis=0)) / (df.max(axis=0) - df.min(axis=0))
         fig, ax = plt.subplots(figsize=(7,5))
@@ -1035,9 +1033,13 @@ class FineTuner:
         plt.close()
         
         df.to_pickle(os.path.join(self.save_dir, '%s_train_loss.pkl' % self.task_name))
-
+        
+        if self.save_best_model:
+            self.saver.save()
+        else:
+            os.system('rm -r "%s"' % self.save_dir)
+            
         return self
-
 
 
     def predict(self, df_tpm, batch_size=512, num_workers=4):
@@ -1099,16 +1101,16 @@ class FineTuner:
         if self.with_wandb:
             self.wandb.finish()
             self.wandb._settings = ''
-        
         self.save(os.path.join(self.save_dir, 'finetuner.pt'))
+
 
     def copy(self):
         return deepcopy(self)
-        
+
+    
     def count_parameters(self):
         return sum(p.numel() for p in self.model.parameters() if p.requires_grad)
 
-    
     
     def get_tuner_epoch(self, train_X, train_y, 
                        max_epochs = 200, work_dir = './Paramtune',

@@ -196,19 +196,20 @@ class Conceptor(nn.Module):
             emb_used = embedding[:, mask]
             
         elif self.proj_level == 'cellpathway':
-            embedding = cellpathway_level_proj #B,L
+            embedding = cellpathway_level_proj #B,L            
             emb_ref = embedding[:, self.ref_celltype_ids]
             
             mask = torch.ones(embedding.shape[1], dtype=torch.bool)
             mask[self.ref_celltype_ids] = False
             emb_used = embedding[:, mask]
-
+            #print(emb_used.shape)
 
         y = self.taskdecoder(emb_used)
 
         gene_encoding = encoding[:, 2:, :]
         gene_ref = gene_encoding[:, self.ref_gene_ids, :]
 
+        
         return (emb_used, (gene_ref, emb_ref)), y
 
 

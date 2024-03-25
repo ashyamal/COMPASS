@@ -223,6 +223,7 @@ def Predictor(dfcx, model, scaler, device = 'cpu', batch_size=512,  num_workers=
     
     dfe = pd.DataFrame(embeddings, index = predict_tcga.patient_name, 
                        columns = columns) 
+    
     dfe = dfe[dfe.columns.difference(['Reference', 'UEGs'])]
     
     dfp = pd.DataFrame(predictions, index = predict_tcga.patient_name)

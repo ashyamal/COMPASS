@@ -18,3 +18,7 @@ with open(os.path.join(cwd, 'gene_tokens_short.json'), 'r') as file:
     TOKENS_SHORT = json.load(file)
 
 CONCEPT = pd.read_csv(os.path.join(cwd, 'conception.tsv'), index_col=0,sep='\t')
+
+
+dfd = pd.read_excel(os.path.join(cwd, 'concept_colors.xlsx'))
+CONCEPT_palette = dfd.set_index('Item').Color.to_dict()

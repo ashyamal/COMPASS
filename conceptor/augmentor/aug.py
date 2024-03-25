@@ -85,6 +85,7 @@ class RandomMaskAugmentor:
         return x_new
         
     def _augment(self, x, mask_prob):
+        assert len(x.shape) == 1, 'augment for each sample on a vector!'
         return [self._transform(x, mask_prob) for _ in range(self.n_views)]
 
 
@@ -126,7 +127,7 @@ class FeatureJitterAugmentor:
         self.no_augment_prob = no_augment_prob
     
     def _transform(self, x, jitter_std):
-
+        
         if torch.rand(1) < self.no_augment_prob:  # New
             return x.clone()
         
@@ -139,6 +140,7 @@ class FeatureJitterAugmentor:
 
 
     def _augment(self, x, jitter_std):
+        assert len(x.shape) == 1, 'augment for each sample on a vector!'
         return [self._transform(x, jitter_std) for _ in range(self.n_views)]
 
     def augment_p(self, p):
@@ -182,8 +184,8 @@ class MaskJitterAugmentor:
         self.no_augment_prob = no_augment_prob
         self.n_views=n_views
 
-        self.augmentor1 = FeatureJitterAugmentor(mask_p_prob, mask_a_prob, mask_n_prob, no_augment_prob, n_views)
-        self.augmentor2 = RandomMaskAugmentor(jitter_p_std, jitter_a_std, jitter_n_std, no_augment_prob, n_views)
+        self.augmentor1 = RandomMaskAugmentor(mask_p_prob, mask_a_prob, mask_n_prob, no_augment_prob, n_views)
+        self.augmentor2 = FeatureJitterAugmentor(jitter_p_std, jitter_a_std, jitter_n_std, no_augment_prob, n_views)
 
         
     def augment_p(self, p):
