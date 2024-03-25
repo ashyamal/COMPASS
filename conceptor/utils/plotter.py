@@ -105,10 +105,10 @@ def plot_performance(y_true, y_prob, y_pred):
     
     ###################################
     order = ['R', 'NR']
-    sns.boxplot(x = 'Label', y = 'Pred. Prob.',data = dfp,  fliersize = 0., width = 0.5,
-                order = order,
-                ax=ax1, palette = boxpalette, saturation = 0.8, boxprops={'facecolor':'None'})
-    sns.stripplot(dfp, x = 'Label', y = 'Pred. Prob.', ax=ax1, size=3, 
+    sns.boxplot(data = dfp,  x = 'Label', y = 'Pred. Prob.',fliersize = 0., width = 0.5,
+                order = order,ax=ax1, palette = boxpalette, 
+                saturation = 0.8, boxprops={'facecolor':'None'})
+    sns.stripplot(data = dfp, x = 'Label', y = 'Pred. Prob.', ax=ax1, size=3, 
                   order = order,
                   palette = boxpalette, edgecolor = 'k', linewidth = 0.1)
     
