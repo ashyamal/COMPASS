@@ -1023,19 +1023,18 @@ class FineTuner:
         self.performance = performance
         self.best_epoch = self.saver.inMemorySave['epoch']
 
-        ## plot loss locally
-        df = pd.DataFrame(self.performance, columns = ['epochs', 'total_loss', 'ssl_loss', '%s_loss' % self.task_name, 
-                                                      'test_loss', 'test_ssl_loss', 'test_%s_loss' % self.task_name]).set_index('epochs')
-        #v = (df - df.min(axis=0)) / (df.max(axis=0) - df.min(axis=0))
-        fig, ax = plt.subplots(figsize=(7,5))
-        df.plot(ax = ax)
-        fig.savefig(os.path.join(self.save_dir, '%s_train_loss.png' % self.task_name), bbox_inches='tight')
-        plt.close()
-        
-        df.to_pickle(os.path.join(self.save_dir, '%s_train_loss.pkl' % self.task_name))
-        
         if self.save_best_model:
             self.saver.save()
+            ## plot loss locally
+            df = pd.DataFrame(self.performance, columns = ['epochs', 'total_loss', 'ssl_loss', '%s_loss' % self.task_name, 
+                                                          'test_loss', 'test_ssl_loss', 'test_%s_loss' % self.task_name]).set_index('epochs')
+            #v = (df - df.min(axis=0)) / (df.max(axis=0) - df.min(axis=0))
+            fig, ax = plt.subplots(figsize=(7,5))
+            df.plot(ax = ax)
+            fig.savefig(os.path.join(self.save_dir, '%s_train_loss.png' % self.task_name), bbox_inches='tight')
+            plt.close()
+            df.to_pickle(os.path.join(self.save_dir, '%s_train_loss.pkl' % self.task_name))
+            
         else:
             os.system('rm -r "%s"' % self.save_dir)
             
