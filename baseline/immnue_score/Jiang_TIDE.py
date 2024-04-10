@@ -3,8 +3,10 @@ import pandas as pd
 from tidepy.pred import TIDE as get_tide
 from .base import GeneSetScorer
 from .scorer import avgAbundance, pcaAbundance, origAbundance, ssGSEA
-from .markers import MARKERS
+from .markers import MARKERS, GENE_ID_MAP
 
+# map gene name to Entrez ID
+name2entrez_map = GENE_ID_MAP.set_index('gene_name')['entrezgene']
 
 '''
 http://tide.dfci.harvard.edu/download/
@@ -39,7 +41,10 @@ class Jiang_TIDE(GeneSetScorer):
 
     
     def __call__(self, df_tpm):
+
         df_tpm_input = df_tpm.T
+        df_tpm_input.index = df_tpm_input.index.map(name2entrez_map)
+        
         result = get_tide(df_tpm_input, 
                       cancer=self.cancer,
                       pretreat=False,

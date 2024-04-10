@@ -11,3 +11,8 @@ import os
 
 cwd = os.path.dirname(__file__)
 MARKERS = pd.read_csv(os.path.join(cwd, 'marker.tsv'), sep='\t', index_col=0)
+
+
+
+cwd = os.path.dirname(__file__)
+GENE_ID_MAP = pd.read_csv(os.path.join(cwd, 'gene_id_map.tsv'), sep='\t', index_col=0)
