@@ -1,15 +1,15 @@
-<a href="url"><img src="./misc/compass_logo.png" align="left" height="130" width="130" ></a>
+<a href="url"><img src="./misc/compass_logo.png" align="left" height="150" width="130" ></a>
 
 
-[![Dataset](https://img.shields.io/badge/datasets-ITRP-green)](https://zitniklab.hms.harvard.edu/conceptor-101/data)
+[![Dataset](https://img.shields.io/badge/datasets-ITRP-green)](https://zitniklab.hms.harvard.edu/compass-101/data)
 ## Concept-based pre-trained pan-cancer models for enhanced immunotherapy response prediction
 
 -----
 
 # Install
 ```bash
-git clone https://github.com/mims-harvard/conceptor.git
-cd conceptor
+git clone https://github.com/mims-harvard/compass.git
+cd compass
 pip install -r ./requirements.txt
 ```
 
@@ -17,8 +17,8 @@ pip install -r ./requirements.txt
 # Import
 ```python
 import sys
-sys.path.insert(0, 'your_path/conceptor')
-from conceptor import FineTuner, loadconceptor
+sys.path.insert(0, 'your_path/compass')
+from compass import FineTuner, loadcompass
 ```
   * Prepare input data
   * Extract the pretrained 45 concepts (cell types, pathways, functional groups)
