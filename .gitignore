@@ -7,13 +7,13 @@ tmpignore
 
 *.TABLE
 
-*.png
-*.pkl
-*.pth
-*.pt
-*.xlsx
+#*.png
+#*.pkl
+#*.pth
+#*.pt
+#*.xlsx
 
-*.csv
+#*.csv
 *.npy
 *.txt
 *.gz
