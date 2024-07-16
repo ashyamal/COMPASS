@@ -1,4 +1,4 @@
-<a href="url"><img src="./misc/compass_logo.png" align="left" height="150" width="130" ></a>
+<a href="url"><img src="./misc/compass_logo.png" align="left" height="130" width="130" ></a>
 
 
 [![Dataset](https://img.shields.io/badge/datasets-ITRP-green)](https://zitniklab.hms.harvard.edu/compass-101/data)
