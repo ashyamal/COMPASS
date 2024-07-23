@@ -15,12 +15,12 @@ tmpignore
 
 #*.csv
 *.npy
-*.txt
+#*.txt
 *.gz
 *.gzip
 *.out
 
-paper
+#paper
 
 
 # C extensions
