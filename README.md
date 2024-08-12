@@ -8,7 +8,7 @@
 
 # Install
 ```bash
-git clone https://github.com/mims-harvard/compass.git
+git clone https://github.com/mims-harvard/Compass.git
 cd compass
 pip install -r ./requirements.txt
 ```
@@ -17,7 +17,7 @@ pip install -r ./requirements.txt
 # Import
 ```python
 import sys
-sys.path.insert(0, 'your_path/compass')
+sys.path.insert(0, 'your_path/Compass')
 from compass import FineTuner, loadcompass
 ```
   * Prepare input data
@@ -25,7 +25,7 @@ from compass import FineTuner, loadcompass
   * Make prediction based on a fintuned model (fintuned by 1133 ITRP patients)
   * Fintune a model by your own data
 
-# Conceptor 101
+# Compass-101
 
 # About
 ----
