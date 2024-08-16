@@ -8,16 +8,12 @@ Created on Fri Nov  3 13:31:25 2023
 import torch
 import torch.nn as nn
 from torch import Tensor
-
 import enum
 import math
-
 import os
 
 
 cwd = os.path.dirname(__file__)
-
-
 
 
 class _GeneInitialization(enum.Enum):
