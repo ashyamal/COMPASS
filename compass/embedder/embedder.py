@@ -111,7 +111,8 @@ class AbundanceEmbedding(nn.Module):
         '''
         super().__init__()
         gee_layer = _GeneExpressionEmbedding(n_genes, embed_dim, learnable_pe, 'uniform')
-        layers = [gee_layer, nn.ReLU()]
+        #layers = [gee_layer, nn.ReLU()]
+        layers = [gee_layer]
         self.layers = nn.Sequential(*layers)
 
     def forward(self, x):
