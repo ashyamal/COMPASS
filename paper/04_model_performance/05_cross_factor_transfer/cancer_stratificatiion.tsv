@@ -1,0 +1,10 @@
+group	cancer_type	NR	R	count
+(Atezo,HiSeq2500)	BLCA	230	68	298
+(Atezo,HiSeq2500)	KIRC	117	48	165
+(Nivo,HiSeq2000)	GBM	14	6	20
+(Nivo,HiSeq2000)	KIRC	18	3	21
+(Nivo,HiSeq2500)	LUAD	31	18	49
+(Nivo,HiSeq2500)	SKCM	33	21	54
+(Pembro,HiSeq2500)	LUAD	23	10	33
+(Pembro,HiSeq2500)	SKCM	55	39	94
+(Pembro,HiSeq2500)	STAD	33	12	45

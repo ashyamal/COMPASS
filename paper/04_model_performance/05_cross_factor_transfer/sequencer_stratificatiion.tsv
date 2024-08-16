@@ -1,0 +1,8 @@
+group	sequencer	NR	R	count
+(BLCA,Atezo)	HiSeq2500	230	68	298
+(BLCA,Atezo)	HiSeq4000	14	7	21
+(BLCA,Atezo)	NovaSeq6000	26	9	35
+(SKCM,Nivo)	HiSeq2000/2500	41	10	51
+(SKCM,Nivo)	HiSeq2500	33	21	54
+(SKCM,Pembro)	HiSeq2000	12	14	26
+(SKCM,Pembro)	HiSeq2500	55	39	94

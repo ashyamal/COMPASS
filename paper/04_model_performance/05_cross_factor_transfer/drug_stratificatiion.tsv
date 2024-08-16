@@ -1,0 +1,8 @@
+group	ICI_map	NR	R	count
+(BLCA,NovaSeq6000)	Atezo	26	9	35
+(BLCA,NovaSeq6000)	Pembro	39	7	46
+(LUAD,HiSeq2500)	Nivo	31	18	49
+(LUAD,HiSeq2500)	Pembro	23	10	33
+(SKCM,HiSeq2500)	Ipi	26	13	39
+(SKCM,HiSeq2500)	Nivo	33	21	54
+(SKCM,HiSeq2500)	Pembro	55	39	94
