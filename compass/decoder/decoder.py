@@ -174,13 +174,13 @@ class ProtoNetDecoder(nn.Module):
 # Define the Prototypical Network without fine-tuning
 class ProtoNetNFTDecoder:
 
-    def __init__(self):
+    def __init__(self, temperature = 0.1):
         
         self.prototype_class_map = {'PD':0, 'SD':0,
                                     'PR':1, 'CR':1, 1:1, 0:0, 
                                     'R':1, 'NR':0}
 
-        self.temperature = 0.1
+        self.temperature = temperature
         
 
     def fit(self, support_set):

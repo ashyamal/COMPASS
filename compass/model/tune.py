@@ -236,12 +236,9 @@ def Predictor(dfcx, model, scaler, device = 'cpu', batch_size=512,  num_workers=
 
 
 
-        
-
-
 
 @torch.no_grad()
-def Extractor(dfcx, model, scaler, device = 'cpu', batch_size = 512,  num_workers=4):
+def Extractor(dfcx, model, scaler, device = 'cpu', batch_size = 512,  num_workers=4, with_gene_level = False):
     '''
     Extract geneset-level and celltype-level features
     '''
@@ -259,22 +256,36 @@ def Extractor(dfcx, model, scaler, device = 'cpu', batch_size = 512,  num_worker
                                           num_workers=num_workers)
     geneset_feat = []
     celltype_feat = []
-
+    gene_feat = []
+    
     for anchor in tqdm(predict_loader, ascii=True):
         anchor = anchor.to(device)
         encoding = model.inputencoder(anchor)
+
+        
+        gene_level_proj = genesetprojector.geneset_scorer(encoding)[:,2:] #remove pid, cancer
         geneset_level_proj, cellpathway_level_proj = model.latentprojector(encoding)
     
         geneset_feat.append(geneset_level_proj)
         celltype_feat.append(cellpathway_level_proj)
+        gene_feat.append(gene_level_proj)
 
+    genefeatures = torch.concat(gene_feat, axis=0).cpu().detach().numpy() 
     genesetfeatures  = torch.concat(geneset_feat, axis=0).cpu().detach().numpy()
     celltypefeatures = torch.concat(celltype_feat, axis=0).cpu().detach().numpy()
 
-    dfgeneset = pd.DataFrame(genesetfeatures, index = predict_tcga.patient_name, columns = model.geneset_feature_name)
-    dfcelltype = pd.DataFrame(celltypefeatures, index = predict_tcga.patient_name, columns = model.celltype_feature_name)
-    
-    return dfgeneset, dfcelltype
+    dfgeneset = pd.DataFrame(genesetfeatures, index = predict_tcga.patient_name, 
+                             columns = model.geneset_feature_name)
+    dfcelltype = pd.DataFrame(celltypefeatures, index = predict_tcga.patient_name, 
+                              columns = model.celltype_feature_name)
+
+    dfgene = pd.DataFrame(genefeatures, index = predict_tcga.patient_name, 
+                          columns = predict_tcga.feature_name)
+
+    return dfgene, dfgeneset, dfcelltype
+
+
+
 
 
 

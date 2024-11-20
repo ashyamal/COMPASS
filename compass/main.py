@@ -53,7 +53,7 @@ def fixseed(seed=42):
         torch.backends.cudnn.benchmark = False
         
 
-fixseed(seed=42)
+#fixseed(seed=42)
 
 
 def worker_init_fn(worker_id):
@@ -182,6 +182,7 @@ class PreTrainer:
                           transformer_pos_emb = self.transformer_pos_emb,
                           task_dense_layer = self.task_dense_layer, 
                           task_batch_norms = self.task_batch_norms, 
+                          seed = self.seed,
                           **self.encoder_kwargs)
         
         model = model.to(self.device)
@@ -382,14 +383,17 @@ class PreTrainer:
         return dfe, dfp
 
     
-    def extract(self, df_tpm, batch_size=512,  num_workers=4):
+    def extract(self, df_tpm, batch_size=512,  num_workers=4, with_gene_level = False):
         model = Compass(**self.saver.inMemorySave['model_args']) 
         model.load_state_dict(self.saver.inMemorySave['model_state_dict'], strict=False)
         model = model.to(self.device)
-        dfg, dfc = Extractor(df_tpm, model, self.scaler, 
+        dfg, dfgs, dfct = Extractor(df_tpm, model, self.scaler, 
                            device = self.device, batch_size=batch_size, 
-                             num_workers=num_workers)
-        return dfg, dfc
+                             num_workers=num_workers, with_gene_level = True)
+        if with_gene_level:
+            return dfg, dfgs, dfct
+        else:
+            return dfgs, dfct
         
 
     def project(self, df_tpm, batch_size=512,  num_workers=4):
@@ -815,6 +819,9 @@ class FineTuner:
         fixseed(self.seed)
         self.model, self.optimizer = self._init_model_opt()
         self.saver = SaveBestModel(save_dir = self.save_dir, save_name = 'ft_model.pth')
+
+
+        
         ssl_loss = TripletLoss(margin=self.triplet_margin, 
                                metric = self.triplet_metric)
         
@@ -875,6 +882,9 @@ class FineTuner:
         best_criteria = 1e10
         self.saver(best_criteria, 0, self.model, self.optimizer, self.scaler)
 
+        print('Test')
+
+        
         for epoch in tqdm(range(self.max_epochs), ascii=True):
             train_total_loss, train_ssl_loss, train_tsk_loss = FT_Trainer(train_loader, self.model, self.optimizer, 
                                                                         self.ssl_loss, self.tsk_loss, self.device, 
@@ -1065,14 +1075,17 @@ class FineTuner:
         return dfe, dfp
 
     
-    def extract(self, df_tpm, batch_size=512, num_workers=4):
+    def extract(self, df_tpm, batch_size=512,  num_workers=4, with_gene_level = False):
         model = Compass(**self.saver.inMemorySave['model_args']) 
         model.load_state_dict(self.saver.inMemorySave['model_state_dict'], strict=False)
         model = model.to(self.device)
-        dfg, dfc = Extractor(df_tpm, model, self.scaler, 
+        dfg, dfgs, dfct = Extractor(df_tpm, model, self.scaler, 
                            device = self.device, batch_size=batch_size, 
-                             num_workers=num_workers)
-        return dfg, dfc
+                             num_workers=num_workers, with_gene_level = True)
+        if with_gene_level:
+            return dfg, dfgs, dfct
+        else:
+            return dfgs, dfct
 
 
     def project(self, df_tpm, batch_size=512,  num_workers=4):
