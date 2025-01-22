@@ -39,7 +39,7 @@ from compass.model.tune import FT_Trainer, FT_Tester, Predictor, Evaluator, Extr
 from compass.model.loss import TripletLoss, CEWithNaNLabelsLoss, MAEWithNaNLabelsLoss
 from compass.model.loss import FocalLoss, DiceLoss, DSCLoss, HingeLoss
 from compass.model.saver import SaveBestModel
-from compass.utils import plot_embed_with_label
+from compass.utils import plot_embed_with_label, loadcompass #  code for compass model loading
 
 
 def fixseed(seed=42): 
@@ -60,14 +60,6 @@ def worker_init_fn(worker_id):
     seed = torch.initial_seed() % 2**32
     np.random.seed(seed)
 
-
-def loadcompass(file, **kwargs):   
-    model = torch.load(file, **kwargs)
-    if model.with_wandb:
-        model.wandb._settings = ''
-    if kwargs.get('map_location') == 'cpu':
-        model.device = 'cpu'
-    return model
 
 
 

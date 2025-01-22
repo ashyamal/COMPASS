@@ -177,3 +177,91 @@ def plot_sankey_diagram(model, concept2plot = ['NKcell'],  reverse = False, scal
         **layout_args
     )
     return df, fig
+
+
+
+
+
+def get_projector_weights(model, concept2plot = features):
+
+    try:
+        gene_name = model.feature_name
+    except:
+        gene_name = model.pretrainer.feature_name
+        
+    concept_lineage_map = CONCEPT.drop_duplicates(['BroadCelltypePathway', 'Lineage']).set_index('BroadCelltypePathway').Lineage
+    LINEA_palette = {'Lymphoid_lineage_Bcell':'#80ff00', 
+                'Lymphoid_lineage_T/NKcell':'#0000ff',
+                'Myeloid_lineage':'#ff00ff', 
+                'Mesenchymal_lineage':'#ffff00', 
+                'Functional_group' :'#ff8000'}
+    
+
+    init_gene = 'genes'
+    init_color = '#0362fc'
+    gene_color = '#9e9d93' #'#eeeee4'
+    GENE_palette = dict(zip(gene_name, [gene_color for i in gene_name]))
+    
+    # all-in-one-colors
+    color_dict = {init_gene:init_color}
+    color_dict.update(GENE_palette)
+    color_dict.update(GENESET_palette)
+    color_dict.update(CELLTYPE_palette)
+    color_dict.update(LINEA_palette)
+
+    geneset_weights = model.model.latentprojector.cellpathwayprojector.cellpathway_aggregator.aggregator.attention_weights
+    gene_weights = model.model.latentprojector.genesetprojector.geneset_aggregator.aggregator.attention_weights
+    
+    concept_name = model.model.latentprojector.cellpathwayprojector.cellpathway_names
+    
+    concept_idx = model.model.latentprojector.cellpathwayprojector.cellpathway_indices
+    
+    geneset_name = model.model.latentprojector.genesetprojector.genesets_names
+    geneset_idx = model.model.latentprojector.genesetprojector.genesets_indices
+    
+    all_res = []
+    for i, (concept, idx) in enumerate(zip(concept_name, concept_idx)):
+    
+        #concept, idx,i
+
+        geneset = geneset_name[idx]
+
+
+        ## geneset->celltype
+        geneset_w = geneset_weights['cellpathway_%s' % i].cpu().detach()
+        geneset_w = F.softmax(geneset_w,dim=0)
+        geneset_w = geneset_w.numpy().reshape(-1,)
+        df2 = pd.DataFrame([geneset, [concept for i in idx], geneset_w]).T
+        df2.columns = ['source', 'target', 'weights']
+        df2['group'] = 'geneset->celltype'
+        
+        ## gene->geneset
+        res = []
+        for j, fi in zip(idx, geneset_w):
+        
+            target = geneset_name[j]
+            sources = gene_name[geneset_idx[j]]
+
+
+            gene_w = gene_weights['geneset_%s' % j].cpu().detach()
+            gene_w = F.softmax(gene_w,dim=0)
+            gene_w = gene_w.numpy().reshape(-1,)
+                
+            df3 = pd.DataFrame([sources, [target for i in sources], gene_w]).T
+            df3.columns = ['source', 'target', 'weights']
+            df3['group'] = 'gene->geneset'
+            res.append(df3)
+        df3 = pd.concat(res)
+
+        ## concat all
+        df = pd.concat([df2, df3,] ) #df1, df4]
+        df['concept'] = concept
+        df['source_color'] = df['source'].map(color_dict)
+        df['target_color'] = df['target'].map(color_dict)
+        all_res.append(df)
+    
+    dfa = pd.concat(all_res)
+
+    ## start to plot the sankey diagram
+    df = dfa[dfa.concept.isin(concept2plot)] # 'Treg','Cytotoxic_Tcell', 'Exhausted_Tcell',    
+    return df
