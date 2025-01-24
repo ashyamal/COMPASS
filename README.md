@@ -2,7 +2,7 @@
 
 
 [![Dataset](https://img.shields.io/badge/datasets-ITRP-green)](https://zitniklab.hms.harvard.edu/compass-101/data)
-## Concept-based pre-trained pan-cancer models for enhanced immunotherapy response prediction
+## Compass for cross-cancer AI modeling of immunotherapy response
 
 -----
 
