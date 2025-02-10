@@ -6,24 +6,72 @@
 
 -----
 
-# Install
+# 1. Installing and Importing Compass
+
+## Installation
+Clone the repository and install the required dependencies:
 ```bash
-git clone https://github.com/mims-harvard/Compass.git
-cd compass
-pip install -r ./requirements.txt
+git clone https://github.com/mims-harvard/Immune-compass.git
+cd Immune-compass
+pip install -r requirements.txt
 ```
 
-
-# Import
+## Adding Compass to Your Environment
+Before importing compass, add it to your Python path:
 ```python
 import sys
-sys.path.insert(0, 'your_path/Compass')
-from compass import FineTuner, loadcompass
+sys.path.insert(0, 'your_path/Immune-compass')
 ```
-  * Prepare input data
-  * Extract the pretrained 45 concepts (cell types, pathways, functional groups)
-  * Make prediction based on a fintuned model (fintuned by 1133 ITRP patients)
-  * Fintune a model by your own data
+
+## Importing Compass
+Now, you can import compass and its key components:
+```python
+import compass
+from compass import PreTrainer, FineTuner, loadcompass
+```
+
+
+# 2) Making Predictions with a Compass Model
+
+You can download all available Compass fine-tuned models [here](https://www.immuno-compass.com/download/) for prediction.
+
+The input `df_tpm` is gene expression tabular data. Please refer [here](https://www.immuno-compass.com/help/index.html#section1) for details on generating input data. The first column represents the cancer code, while the remaining 15,682 columns correspond to genes. Each row represents one patient. An example input file can be downloaded [here](https://www.immuno-compass.com/download/other/compass_input_example.csv).
+
+The output `dfpred` contains two columns, where `0` indicates non-response and `1` indicates response.
+
+```python
+import pandas as pd
+from compass import loadcompass
+
+df_tpm = pd.read_csv('./data/Compass_tpm.tsv', sep='\t', index_col=0)
+model = loadcompass('https://www.immuno-compass.com/download/model/LOCO/pft_leave_Gide.pt', 
+                    map_location='cpu')  # Change to torch.device('cuda:device_id') if you want to use GPU
+
+_, dfpred = model.predict(df_tpm, batch_size=128)
+```
+
+
+
+# 3) Extracting Features with a Compass Model
+
+Compass can also serve as a feature extractor. These features can be used for build a logistic regression for response prediction or a Cox regression for survail prediction
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # Compass-101
 
