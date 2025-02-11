@@ -9,7 +9,7 @@ import torch
 import numpy as np
 
 
-class MixupNomralAugmentor:
+class MixupNormalAugmentor:
     """Mixup from normal samples with selected genes"""
 
     def __init__(self, df_tpm_normal, genes2mixup=[], 
@@ -167,12 +167,12 @@ class MaskJitterAugmentor:
     """Mixed augmentation"""
 
     def __init__(self, 
-                 mask_p_prob = 0.1,
+                 mask_p_prob = 0.01,
                  mask_a_prob = None, 
-                 mask_n_prob = None,
-                 jitter_p_std = 0.1,
+                 mask_n_prob = 0.0,
+                 jitter_p_std = 0.01,
                  jitter_a_std = None, 
-                 jitter_n_std = None,
+                 jitter_n_std = 0.0,
                  no_augment_prob = 0.1,
                  n_views=1):
         self.mask_p_prob = mask_p_prob

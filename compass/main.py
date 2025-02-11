@@ -79,7 +79,7 @@ class PreTrainer:
                 task_batch_norms = True,
                 task_class_weight = None, 
                 encoder='transformer',
-                encoder_dropout = 0.,
+                encoder_dropout = 0.2,
                 num_cancer_types = 33,
                 
                 transformer_dim = 32,
@@ -96,13 +96,13 @@ class PreTrainer:
                 triplet_metric = 'cosine',
                 triplet_margin=1.,
                 K = 1,                 
-                seed = None,
+                seed = 42,
 
                 work_dir = './results',
                 verbose = True,
                 with_wandb = False,
                 wandb_project = 'pretrain',
-                wandb_dir = '/n/data1/hms/dbmi/zitnik/lab/users/was966/wandb/',
+                wandb_dir = './wandb/',
                 wandb_entity = 'senwanxiang',
                 **encoder_kwargs
                 ):
@@ -217,7 +217,7 @@ class PreTrainer:
 
     def train(self, 
               dfcx_train, 
-              dfy_train, 
+              dfy_train = None, 
               dfcx_test = None, 
               dfy_test = None, 
               task_name = 'notask', 
@@ -246,6 +246,9 @@ class PreTrainer:
         self.task_type = task_type
         self.task_name = task_name
 
+        if dfy_train is None:
+            dfy_train = pd.DataFrame(np.zeros((len(dfcx_train), 2)), index = dfcx_train.index) 
+
         train_tcga = TCGAData(dfcx_train, dfy_train, self.augmentor, K = self.K)
         
         self.y_scaler = train_tcga.y_scaler
@@ -259,6 +262,8 @@ class PreTrainer:
         
         if dfcx_test is not None:
             dfcx_test = self.scaler.transform(dfcx_test)
+            if dfy_test is None:
+                dfy_test = pd.DataFrame(np.zeros((len(dfcx_test), 2)), index = dfcx_test.index) 
             test_tcga = TCGAData(dfcx_test, dfy_test, self.augmentor, K = self.K)
             test_loader = data.DataLoader(test_tcga, batch_size=self.batch_size, 
                                           shuffle=False, pin_memory=True, num_workers=4)
@@ -347,7 +352,7 @@ class PreTrainer:
                                                       'test_loss', 'test_ssl_loss', 'test_%s_loss' % self.task_name]).set_index('epochs')
         #v = (df - df.min(axis=0)) / (df.max(axis=0) - df.min(axis=0))
         fig, ax = plt.subplots(figsize=(7,5))
-        df.plot(ax = ax)
+        df[['ssl_loss', 'test_ssl_loss']].plot(ax = ax)
         fig.savefig(os.path.join(self.save_dir, 'tcga_train_loss.png'), bbox_inches='tight')
         df.to_pickle(os.path.join(self.save_dir, 'tcga_train_loss.pkl'))
 
@@ -874,9 +879,6 @@ class FineTuner:
         best_criteria = 1e10
         self.saver(best_criteria, 0, self.model, self.optimizer, self.scaler)
 
-        print('Test')
-
-        
         for epoch in tqdm(range(self.max_epochs), ascii=True):
             train_total_loss, train_ssl_loss, train_tsk_loss = FT_Trainer(train_loader, self.model, self.optimizer, 
                                                                         self.ssl_loss, self.tsk_loss, self.device, 
