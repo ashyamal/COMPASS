@@ -1,8 +1,7 @@
 <a href="url"><img src="./misc/compass_logo.png" align="left" height="130" width="130" ></a>
 
 
-[![Dataset](https://img.shields.io/badge/datasets-donwload-green)](https://www.immuno-compass.com/download/)
-[![Model](https://img.shields.io/badge/models-donwload-blue)](https://www.immuno-compass.com/download/)
+[![Dataset](https://img.shields.io/badge/dataset&model-donwload-green)](https://www.immuno-compass.com/download/)
 
 
 ## Compass for cross-cancer AI modeling of immunotherapy response
