@@ -1,0 +1,74 @@
+Index	Sample_id	response_label	RECIST	Timing	cohort	sub_cohort	cancer_type	sequencer	ICI	ICI_target	ICI_map	ICI_target_map	Biopsy_site	Tissue	Tissue_map	Age	Gender	OS_Months	OS_Event	PFS_Months	PFS_Event	patient_id
+1_ipiPD1_PRE	ipiPD1_1_PRE	NR	PD	Pre	Gide	Gide(Ipi+Pembro)	SKCM	HiSeq2500	Ipilimumab + Pembrolizumab	CTLA4+PD1	Ipi+Pembro	PD1+CTLA4	Skin	SQ	Skin	42	F	22.966666666666665	0.0	0.5	1	1_ipiPD1
+2_ipiPD1_PRE	ipiPD1_2_PRE	NR	PD	Pre	Gide	Gide(Ipi+Pembro)	SKCM	HiSeq2500	Ipilimumab + Pembrolizumab	CTLA4+PD1	Ipi+Pembro	PD1+CTLA4	Lymph node	LN	Lymph node	41	M	17.666666666666668	0.0	1.1333333333333333	1	2_ipiPD1
+6_ipiPD1_PRE	ipiPD1_6_PRE	NR	PD	Pre	Gide	Gide(Ipi+Nivo)	SKCM	HiSeq2500	Ipilimumab + Nivolumab	CTLA4+PD1	Ipi+Nivo	PD1+CTLA4	Lymph node	LN	Lymph node	75	M	3.6	1.0	1.3666666666666667	1	6_ipiPD1
+7_ipiPD1_PRE	ipiPD1_7_PRE	R	PR	Pre	Gide	Gide(Ipi+Nivo)	SKCM	HiSeq2500	Ipilimumab + Nivolumab	CTLA4+PD1	Ipi+Nivo	PD1+CTLA4	Skin	SQ	Skin	59	M	5.633333333333334	0.0	2.7	1	7_ipiPD1
+8_ipiPD1_PRE	ipiPD1_8_PRE	NR	PD	Pre	Gide	Gide(Ipi+Pembro)	SKCM	HiSeq2500	Ipilimumab + Pembrolizumab	CTLA4+PD1	Ipi+Pembro	PD1+CTLA4	Lymph node	LN	Lymph node	55	M	21.233333333333334	0.0	2.7	1	8_ipiPD1
+10_ipiPD1_PRE	ipiPD1_10_PRE	NR	PD	Pre	Gide	Gide(Ipi+Pembro)	SKCM	HiSeq2500	Ipilimumab + Pembrolizumab	CTLA4+PD1	Ipi+Pembro	PD1+CTLA4	Lymph node	LN	Lymph node	51	M	5.866666666666666	1.0	2.7	1	10_ipiPD1
+12_ipiPD1_PRE	ipiPD1_12_PRE	NR	PD	Pre	Gide	Gide(Ipi+Nivo)	SKCM	HiSeq2500	Ipilimumab + Nivolumab	CTLA4+PD1	Ipi+Nivo	PD1+CTLA4	Lung	Lung	Lung	55	F	9.766666666666667	0.0	2.7333333333333334	1	12_ipiPD1
+13_ipiPD1_PRE	ipiPD1_13_PRE	R	PR	Pre	Gide	Gide(Ipi+Nivo)	SKCM	HiSeq2500	Ipilimumab + Nivolumab	CTLA4+PD1	Ipi+Nivo	PD1+CTLA4	Skin	SQ	Skin	68	F	11.9	1.0	3.6	1	13_ipiPD1
+14_ipiPD1_PRE	ipiPD1_14_PRE	NR	SD	Pre	Gide	Gide(Ipi+Pembro)	SKCM	HiSeq2500	Ipilimumab + Pembrolizumab	CTLA4+PD1	Ipi+Pembro	PD1+CTLA4	Skin	SQ	Skin	47	F	23.033333333333335	0.0	4.1	1	14_ipiPD1
+15_ipiPD1_PRE	ipiPD1_15_PRE	NR	SD	Pre	Gide	Gide(Ipi+Pembro)	SKCM	HiSeq2500	Ipilimumab + Pembrolizumab	CTLA4+PD1	Ipi+Pembro	PD1+CTLA4	Skin	SQ	Skin	57	M	22.0	1.0	5.066666666666666	1	15_ipiPD1
+17_ipiPD1_PRE	ipiPD1_17_PRE	R	PR	Pre	Gide	Gide(Ipi+Nivo)	SKCM	HiSeq2500	Ipilimumab + Nivolumab	CTLA4+PD1	Ipi+Nivo	PD1+CTLA4	Lymph node	LN	Lymph node	48	F	6.533333333333333	0.0	6.533333333333333	0	17_ipiPD1
+19_ipiPD1_PRE	ipiPD1_19_PRE	NR	SD	Pre	Gide	Gide(Ipi+Pembro)	SKCM	HiSeq2500	Ipilimumab + Pembrolizumab	CTLA4+PD1	Ipi+Pembro	PD1+CTLA4	Skin	SQ	Skin	56	M	21.166666666666668	0.0	10.033333333333333	1	19_ipiPD1
+20_ipiPD1_PRE	ipiPD1_20_PRE	NR	SD	Pre	Gide	Gide(Ipi+Pembro)	SKCM	HiSeq2500	Ipilimumab + Pembrolizumab	CTLA4+PD1	Ipi+Pembro	PD1+CTLA4	Lymph node	LN	Lymph node	57	M	17.933333333333334	0.0	12.866666666666667	1	20_ipiPD1
+21_ipiPD1_PRE	ipiPD1_21_PRE	R	PR	Pre	Gide	Gide(Ipi+Nivo)	SKCM	HiSeq2500	Ipilimumab + Nivolumab	CTLA4+PD1	Ipi+Nivo	PD1+CTLA4	Skin	SQ	Skin	63	M	13.666666666666666	0.0	13.666666666666666	0	21_ipiPD1
+23_ipiPD1_PRE	ipiPD1_23_PRE	R	PR	Pre	Gide	Gide(Ipi+Pembro)	SKCM	HiSeq2500	Ipilimumab + Pembrolizumab	CTLA4+PD1	Ipi+Pembro	PD1+CTLA4	Brain	Brain	Brain	51	F	16.866666666666667	0.0	16.866666666666667	0	23_ipiPD1
+24_ipiPD1_PRE	ipiPD1_24_PRE	R	PR	Pre	Gide	Gide(Ipi+Nivo)	SKCM	HiSeq2500	Ipilimumab + Nivolumab	CTLA4+PD1	Ipi+Nivo	PD1+CTLA4	Lymph node	LN	Lymph node	34	M	40.1	0.0	16.966666666666665	1	24_ipiPD1
+25_ipiPD1_PRE	ipiPD1_25_PRE	NR	SD	Pre	Gide	Gide(Ipi+Pembro)	SKCM	HiSeq2500	Ipilimumab + Pembrolizumab	CTLA4+PD1	Ipi+Pembro	PD1+CTLA4	Lymph node	LN	Lymph node	67	F	17.266666666666666	1.0	17.266666666666666	0	25_ipiPD1
+26_ipiPD1_PRE	ipiPD1_26_PRE	R	CR	Pre	Gide	Gide(Ipi+Pembro)	SKCM	HiSeq2500	Ipilimumab + Pembrolizumab	CTLA4+PD1	Ipi+Pembro	PD1+CTLA4	Lymph node	LN	Lymph node	75	M	18.133333333333333	0.0	18.133333333333333	0	26_ipiPD1
+27_ipiPD1_PRE	ipiPD1_27_PRE	R	CR	Pre	Gide	Gide(Ipi+Pembro)	SKCM	HiSeq2500	Ipilimumab + Pembrolizumab	CTLA4+PD1	Ipi+Pembro	PD1+CTLA4	Other	Abdomen	Other	49	M	18.2	0.0	18.2	0	27_ipiPD1
+32_ipiPD1_PRE	ipiPD1_32_PRE	R	CR	Pre	Gide	Gide(Ipi+Pembro)	SKCM	HiSeq2500	Ipilimumab + Pembrolizumab	CTLA4+PD1	Ipi+Pembro	PD1+CTLA4	Lymph node	LN	Lymph node	71	M	19.9	0.0	19.9	0	32_ipiPD1
+33_ipiPD1_PRE	ipiPD1_33_PRE	R	PR	Pre	Gide	Gide(Ipi+Pembro)	SKCM	HiSeq2500	Ipilimumab + Pembrolizumab	CTLA4+PD1	Ipi+Pembro	PD1+CTLA4	Skin	SQ	Skin	73	M	20.3	0.0	20.3	0	33_ipiPD1
+34_ipiPD1_PRE	ipiPD1_34_PRE	R	CR	Pre	Gide	Gide(Ipi+Pembro)	SKCM	HiSeq2500	Ipilimumab + Pembrolizumab	CTLA4+PD1	Ipi+Pembro	PD1+CTLA4	Lung	Lung	Lung	51	M	20.766666666666666	0.0	20.766666666666666	0	34_ipiPD1
+35_ipiPD1_PRE	ipiPD1_35_PRE	R	CR	Pre	Gide	Gide(Ipi+Pembro)	SKCM	HiSeq2500	Ipilimumab + Pembrolizumab	CTLA4+PD1	Ipi+Pembro	PD1+CTLA4	Skin	SQ	Skin	72	M	20.9	0.0	20.9	0	35_ipiPD1
+36_ipiPD1_PRE	ipiPD1_36_PRE	R	CR	Pre	Gide	Gide(Ipi+Pembro)	SKCM	HiSeq2500	Ipilimumab + Pembrolizumab	CTLA4+PD1	Ipi+Pembro	PD1+CTLA4	Skin	SQ	Skin	74	F	21.233333333333334	0.0	21.233333333333334	0	36_ipiPD1
+37_ipiPD1_PRE	ipiPD1_37_PRE	R	PR	Pre	Gide	Gide(Ipi+Pembro)	SKCM	HiSeq2500	Ipilimumab + Pembrolizumab	CTLA4+PD1	Ipi+Pembro	PD1+CTLA4	Lymph node	LN	Lymph node	76	M	21.233333333333334	0.0	21.233333333333334	0	37_ipiPD1
+38_ipiPD1_PRE	ipiPD1_38_PRE	R	CR	Pre	Gide	Gide(Ipi+Pembro)	SKCM	HiSeq2500	Ipilimumab + Pembrolizumab	CTLA4+PD1	Ipi+Pembro	PD1+CTLA4	Skin	SQ	Skin	59	F	21.666666666666668	0.0	21.666666666666668	0	38_ipiPD1
+44_ipiPD1_PRE	ipiPD1_44_PRE	R	PR	Pre	Gide	Gide(Ipi+Pembro)	SKCM	HiSeq2500	Ipilimumab + Pembrolizumab	CTLA4+PD1	Ipi+Pembro	PD1+CTLA4	Skin	SQ	Skin	68	M	23.166666666666668	0.0	23.166666666666668	0	44_ipiPD1
+45_ipiPD1_PRE	ipiPD1_45_PRE	R	CR	Pre	Gide	Gide(Ipi+Pembro)	SKCM	HiSeq2500	Ipilimumab + Pembrolizumab	CTLA4+PD1	Ipi+Pembro	PD1+CTLA4	Mucosa	Mucosa	Mucosa	70	M	24.033333333333335	0.0	24.033333333333335	0	45_ipiPD1
+46_ipiPD1_PRE	ipiPD1_46_PRE	R	CR	Pre	Gide	Gide(Ipi+Pembro)	SKCM	HiSeq2500	Ipilimumab + Pembrolizumab	CTLA4+PD1	Ipi+Pembro	PD1+CTLA4	Lung	Lung	Lung	54	F	24.033333333333335	0.0	24.033333333333335	0	46_ipiPD1
+47_ipiPD1_PRE	ipiPD1_47_PRE	R	PR	Pre	Gide	Gide(Ipi+Pembro)	SKCM	HiSeq2500	Ipilimumab + Pembrolizumab	CTLA4+PD1	Ipi+Pembro	PD1+CTLA4	Skin	SQ	Skin	24	F	24.4	0.0	24.4	0	47_ipiPD1
+49_ipiPD1_PRE	ipiPD1_49_PRE	R	CR	Pre	Gide	Gide(Ipi+Pembro)	SKCM	HiSeq2500	Ipilimumab + Pembrolizumab	CTLA4+PD1	Ipi+Pembro	PD1+CTLA4	Lymph node	LN	Lymph node	36	M	25.833333333333332	0.0	25.833333333333332	0	49_ipiPD1
+50_ipiPD1_PRE	ipiPD1_50_PRE	R	PR	Pre	Gide	Gide(Ipi+Pembro)	SKCM	HiSeq2500	Ipilimumab + Pembrolizumab	CTLA4+PD1	Ipi+Pembro	PD1+CTLA4	Lymph node	LN	Lymph node	68	M	30.133333333333333	0.0	30.133333333333333	0	50_ipiPD1
+2_PD1_PRE	PD1_2_PRE	NR	PD	Pre	Gide	Gide(Pembro)	SKCM	HiSeq2500	Pembrolizumab	PD1	Pembro	PD1	Skin	SQ	Skin	61	F	2.1666666666666665	1.0	0.43333333333333335	1	2_PD1
+3_PD1_PRE	PD1_3_PRE	NR	PD	Pre	Gide	Gide(Nivo)	SKCM	HiSeq2500	Nivolumab	PD1	Nivo	PD1	Skin	SQ	Skin	50	M	1.9666666666666666	1.0	0.7666666666666667	1	3_PD1
+4_PD1_PRE	PD1_4_PRE	NR	PD	Pre	Gide	Gide(Pembro)	SKCM	HiSeq2500	Pembrolizumab	PD1	Pembro	PD1	Skin	SQ	Skin	84	M	0.7333333333333333	1.0	0.7666666666666667	1	4_PD1
+5_PD1_PRE	PD1_5_PRE	NR	PD	Pre	Gide	Gide(Pembro)	SKCM	HiSeq2500	Pembrolizumab	PD1	Pembro	PD1	Skin	SQ	Skin	67	M	5.166666666666667	1.0	1.3	1	5_PD1
+6_PD1_PRE	PD1_6_PRE	NR	PD	Pre	Gide	Gide(Nivo)	SKCM	HiSeq2500	Nivolumab	PD1	Nivo	PD1	Lymph node	LN	Lymph node	68	M	3.1333333333333333	1.0	1.4	1	6_PD1
+7_PD1_PRE	PD1_7_PRE	NR	PD	Pre	Gide	Gide(Nivo)	SKCM	HiSeq2500	Nivolumab	PD1	Nivo	PD1	Lymph node	LN	Lymph node	57	F	2.6666666666666665	1.0	1.5666666666666667	1	7_PD1
+8_PD1_PRE	PD1_8_PRE	NR	PD	Pre	Gide	Gide(Nivo)	SKCM	HiSeq2500	Nivolumab	PD1	Nivo	PD1	Skin	SQ	Skin	85	F	1.9333333333333333	1.0	1.9333333333333333	1	8_PD1
+9_PD1_PRE	PD1_9_PRE	NR	PD	Pre	Gide	Gide(Pembro)	SKCM	HiSeq2500	Pembrolizumab	PD1	Pembro	PD1	Skin	SQ	Skin	70	F	3.3	1.0	2.3666666666666667	1	9_PD1
+10_PD1_PRE	PD1_10_PRE	NR	PD	Pre	Gide	Gide(Pembro)	SKCM	HiSeq2500	Pembrolizumab	PD1	Pembro	PD1	Skin	SQ	Skin	90	M	18.366666666666667	0.0	2.533333333333333	1	10_PD1
+11_PD1_PRE	PD1_11_PRE	NR	PD	Pre	Gide	Gide(Pembro)	SKCM	HiSeq2500	Pembrolizumab	PD1	Pembro	PD1	Skin	SQ	Skin	66	M	5.533333333333333	1.0	2.6	1	11_PD1
+12_PD1_PRE	PD1_12_PRE	NR	SD	Pre	Gide	Gide(Pembro)	SKCM	HiSeq2500	Pembrolizumab	PD1	Pembro	PD1	Skin	SQ	Skin	52	M	6.633333333333334	1.0	2.6666666666666665	1	12_PD1
+13_PD1_PRE	PD1_13_PRE	NR	PD	Pre	Gide	Gide(Pembro)	SKCM	HiSeq2500	Pembrolizumab	PD1	Pembro	PD1	Skin	SQ	Skin	69	M	3.2	1.0	2.7333333333333334	1	13_PD1
+14_PD1_PRE	PD1_14_PRE	NR	PD	Pre	Gide	Gide(Pembro)	SKCM	HiSeq2500	Pembrolizumab	PD1	Pembro	PD1	Mucosa	Mucosa	Mucosa	58	M	33.1	1.0	2.7666666666666666	1	14_PD1
+15_PD1_PRE	PD1_15_PRE	NR	PD	Pre	Gide	Gide(Pembro)	SKCM	HiSeq2500	Pembrolizumab	PD1	Pembro	PD1	Skin	SQ	Skin	76	F	10.0	1.0	2.8	1	15_PD1
+16_PD1_PRE	PD1_16_PRE	NR	PD	Pre	Gide	Gide(Pembro)	SKCM	HiSeq2500	Pembrolizumab	PD1	Pembro	PD1	Lymph node	LN	Lymph node	55	M	5.633333333333334	1.0	2.8	1	16_PD1
+17_PD1_PRE	PD1_17_PRE	NR	PD	Pre	Gide	Gide(Pembro)	SKCM	HiSeq2500	Pembrolizumab	PD1	Pembro	PD1	Skin	SQ	Skin	37	M	8.6	1.0	3.2	1	17_PD1
+18_PD1_PRE	PD1_18_PRE	NR	PD	Pre	Gide	Gide(Pembro)	SKCM	HiSeq2500	Pembrolizumab	PD1	Pembro	PD1	Skin	SQ	Skin	62	M	7.6	1.0	3.3333333333333335	1	18_PD1
+19_PD1_PRE	PD1_19_PRE	NR	SD	Pre	Gide	Gide(Pembro)	SKCM	HiSeq2500	Pembrolizumab	PD1	Pembro	PD1	Skin	SQ	Skin	54	M	12.833333333333334	1.0	4.166666666666667	1	19_PD1
+21_PD1_PRE	PD1_21_PRE	NR	SD	Pre	Gide	Gide(Pembro)	SKCM	HiSeq2500	Pembrolizumab	PD1	Pembro	PD1	Skin	SQ	Skin	67	M	18.366666666666667	1.0	5.533333333333333	1	21_PD1
+23_PD1_PRE	PD1_23_PRE	NR	SD	Pre	Gide	Gide(Nivo)	SKCM	HiSeq2500	Nivolumab	PD1	Nivo	PD1	Skin	SQ	Skin	40	M	6.366666666666666	1.0	6.366666666666666	1	23_PD1
+25_PD1_PRE	PD1_25_PRE	R	PR	Pre	Gide	Gide(Nivo)	SKCM	HiSeq2500	Nivolumab	PD1	Nivo	PD1	Skin	SQ	Skin	49	M	29.9	1.0	9.033333333333333	1	25_PD1
+27_PD1_PRE	PD1_27_PRE	R	PR	Pre	Gide	Gide(Pembro)	SKCM	HiSeq2500	Pembrolizumab	PD1	Pembro	PD1	Skin	SQ	Skin	76	M	35.56666666666667	1.0	10.466666666666667	1	27_PD1
+29_PD1_PRE	PD1_29_PRE	NR	SD	Pre	Gide	Gide(Pembro)	SKCM	HiSeq2500	Pembrolizumab	PD1	Pembro	PD1	Skin	SQ	Skin	55	M	27.5	1.0	11.166666666666666	1	29_PD1
+30_PD1_PRE	PD1_30_PRE	NR	SD	Pre	Gide	Gide(Pembro)	SKCM	HiSeq2500	Pembrolizumab	PD1	Pembro	PD1	Skin	SQ	Skin	86	F	19.366666666666667	0.0	11.933333333333334	1	30_PD1
+34_PD1_PRE	PD1_34_PRE	R	PR	Pre	Gide	Gide(Pembro)	SKCM	HiSeq2500	Pembrolizumab	PD1	Pembro	PD1	Lymph node	LN	Lymph node	78	M	29.266666666666666	1.0	18.133333333333333	1	34_PD1
+35_PD1_PRE	PD1_35_PRE	R	PR	Pre	Gide	Gide(Pembro)	SKCM	HiSeq2500	Pembrolizumab	PD1	Pembro	PD1	Skin	SQ	Skin	55	F	36.36666666666667	0.0	19.533333333333335	1	35_PD1
+36_PD1_PRE	PD1_36_PRE	R	PR	Pre	Gide	Gide(Nivo)	SKCM	HiSeq2500	Nivolumab	PD1	Nivo	PD1	Skin	SQ	Skin	76	M	20.233333333333334	1.0	19.666666666666668	1	36_PD1
+38_PD1_PRE	PD1_38_PRE	R	PR	Pre	Gide	Gide(Pembro)	SKCM	HiSeq2500	Pembrolizumab	PD1	Pembro	PD1	Skin	SQ	Skin	69	F	51.56666666666667	0.0	25.166666666666668	1	38_PD1
+40_PD1_PRE	PD1_40_PRE	R	PR	Pre	Gide	Gide(Pembro)	SKCM	HiSeq2500	Pembrolizumab	PD1	Pembro	PD1	Skin	SQ	Skin	78	M	28.166666666666668	0.0	28.166666666666668	0	40_PD1
+41_PD1_PRE	PD1_41_PRE	R	PR	Pre	Gide	Gide(Pembro)	SKCM	HiSeq2500	Pembrolizumab	PD1	Pembro	PD1	Skin	SQ	Skin	61	F	29.533333333333335	0.0	29.0	1	41_PD1
+42_PD1_PRE	PD1_42_PRE	R	CR	Pre	Gide	Gide(Pembro)	SKCM	HiSeq2500	Pembrolizumab	PD1	Pembro	PD1	Skin	SQ	Skin	59	F	29.7	0.0	29.7	0	42_PD1
+44_PD1_PRE	PD1_44_PRE	R	PR	Pre	Gide	Gide(Pembro)	SKCM	HiSeq2500	Pembrolizumab	PD1	Pembro	PD1	Lymph node	LN	Lymph node	45	F	35.833333333333336	0.0	35.833333333333336	0	44_PD1
+45_PD1_PRE	PD1_45_PRE	R	PR	Pre	Gide	Gide(Pembro)	SKCM	HiSeq2500	Pembrolizumab	PD1	Pembro	PD1	Skin	SQ	Skin	82	M	36.166666666666664	0.0	36.166666666666664	0	45_PD1
+46_PD1_PRE	PD1_46_PRE	R	PR	Pre	Gide	Gide(Pembro)	SKCM	HiSeq2500	Pembrolizumab	PD1	Pembro	PD1	Skin	SQ	Skin	71	M	36.6	0.0	36.6	0	46_PD1
+47_PD1_PRE	PD1_47_PRE	R	PR	Pre	Gide	Gide(Pembro)	SKCM	HiSeq2500	Pembrolizumab	PD1	Pembro	PD1	Skin	SQ	Skin	62	M	39.13333333333333	0.0	39.13333333333333	0	47_PD1
+48_PD1_PRE	PD1_48_PRE	R	PR	Pre	Gide	Gide(Pembro)	SKCM	HiSeq2500	Pembrolizumab	PD1	Pembro	PD1	Skin	SQ	Skin	40	M	39.63333333333333	0.0	39.63333333333333	0	48_PD1
+49_PD1_PRE	PD1_49_PRE	R	CR	Pre	Gide	Gide(Nivo)	SKCM	HiSeq2500	Nivolumab	PD1	Nivo	PD1	Skin	SQ	Skin	72	F	44.266666666666666	0.0	44.266666666666666	0	49_PD1
+50_PD1_PRE	PD1_50_PRE	R	CR	Pre	Gide	Gide(Nivo)	SKCM	HiSeq2500	Nivolumab	PD1	Nivo	PD1	Skin	SQ	Skin	86	M	44.733333333333334	0.0	44.733333333333334	0	50_PD1
+52_PD1_PRE	PD1_52_PRE	R	PR	Pre	Gide	Gide(Pembro)	SKCM	HiSeq2500	Pembrolizumab	PD1	Pembro	PD1	Skin	SQ	Skin	63	F	51.766666666666666	0.0	51.766666666666666	0	52_PD1
+53_PD1_PRE	PD1_53_PRE	R	CR	Pre	Gide	Gide(Pembro)	SKCM	HiSeq2500	Pembrolizumab	PD1	Pembro	PD1	Lymph node	LN	Lymph node	71	F	52.96666666666667	0.0	52.96666666666667	0	53_PD1
+54_PD1_PRE	PD1_54_PRE	R	PR	Pre	Gide	Gide(Pembro)	SKCM	HiSeq2500	Pembrolizumab	PD1	Pembro	PD1	Skin	SQ	Skin	52	F	53.43333333333333	0.0	53.43333333333333	0	54_PD1
