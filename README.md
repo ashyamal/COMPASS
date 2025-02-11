@@ -46,7 +46,7 @@ The output `df_pred` contains two columns, where `0` indicates non-response and 
 
 ```python
 df_tpm = pd.read_csv('./data/compass_gide_tpm.tsv', sep='\t', index_col=0)
-#download a compass model from https://www.immuno-compass.com/download/model/LOCO/pft_leave_Gide.pt 
+# OR directly load the compass model from https://www.immuno-compass.com/download/model/LOCO/pft_leave_Gide.pt 
 model = loadcompass('./model/pft_leave_Gide.pt', map_location = 'cpu')
 # Use map_location = 'cpu' if you dont have a GPU card
 _, df_pred = model.predict(df_tpm, batch_size=128)
@@ -61,7 +61,7 @@ Both pre-trained (PT) and fine-tuned (FT) Compass models can function as feature
 ```python
 # Use any Compass model of your choice
 model = loadcompass('./model/pretrainer.pt') 
-#downloaded from https://www.immuno-compass.com/download/model/pretrainer.pt 
+# OR directly load the model from https://www.immuno-compass.com/download/model/pretrainer.pt 
 dfgn, dfgs, dfct = model.extract(df_tpm, batch_size=128, with_gene_level=True)
 ```
 
