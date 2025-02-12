@@ -80,12 +80,12 @@ If you have in-house data and would like to fine-tune a Compass model, you can u
 ```python
 ft_args = {'load_decoder': True}
 ```
+Choose one of: `FFT`, `PFT`, or `LFT` mode for fine-tuning, use `LFT` if your dataset is small (e.g., n < 50).
 
 ### Example Fine-Tuning Process
 ```python
 model = loadcompass('./model/finetuner_pft_all.pt')  
-ft_args = {'mode': 'PFT', # Choose one of: `FFT`, `PFT`, or `LFT`, use `LFT` if your dataset is small..
-          'lr': 1e-3, 'batch_size': 16, 'max_epochs': 100, 'load_decoder': True}
+ft_args = {'mode': 'PFT', 'lr': 1e-3, 'batch_size': 16, 'max_epochs': 100, 'load_decoder': True}
 
 finetuner = FineTuner(model, **ft_args)
 
