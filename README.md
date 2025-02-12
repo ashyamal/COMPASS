@@ -100,7 +100,7 @@ This process fine-tunes the Compass model on your data and saves the updated mod
 
 
 
-## 5. Pre-training Compass from Scracth
+## 5. Pre-training Compass from Scratch
 ```python
 # Load the example dataset for pretraining
 # We provide sample datasets contain gene expression data for training and testing
