@@ -41,7 +41,7 @@ You can download all available Compass fine-tuned models [here](https://www.immu
 
 The input `df_tpm` is gene expression tabular data. Please refer [here](https://www.immuno-compass.com/help/index.html#section1) for details on generating input data. The first column represents the cancer code, while the remaining 15,672 columns correspond to genes. Each row represents one patient. An example input file can be downloaded [here](https://www.immuno-compass.com/download/other/compass_gide_tpm.tsv).
 
-The output `df_pred` contains two columns, where `0` indicates non-response and `1` indicates response.
+The output `df_pred` contains two columns: `0` indicates non-response and `1` indicates response.
 
 ```python
 df_tpm = pd.read_csv('./data/compass_gide_tpm.tsv', sep='\t', index_col=0)
@@ -55,10 +55,10 @@ _, df_pred = model.predict(df_tpm, batch_size=128)
 
 ## 3. Extracting Features with a Compass Model
 
-Both pre-trained (PT) and fine-tuned (FT) Compass models can function as feature extractors. The extracted gene-level, geneset-level, or cell type/pathway-level features can be used to build a logistic regression model for response prediction or a Cox regression model for survival prediction.
+Both pre-trained (PT) and fine-tuned (FT) Compass models can function as feature extractors. The extracted features-gene-level, geneset-level, or cell type/pathway-level-can be used for downstream taks such as building a logistic regression model for response prediction or a Cox regression model for survival prediction.
 
 ```python
-# Use any Compass model of your choice
+# Load any Compass model of your choice
 model = loadcompass('./model/pretrainer.pt') 
 # OR directly load the model from https://www.immuno-compass.com/download/model/pretrainer.pt 
 dfgn, dfgs, dfct = model.extract(df_tpm, batch_size=128, with_gene_level=True)
@@ -74,13 +74,13 @@ dfgs, dfct = model.project(df_tpm, batch_size=128)
 
 ## 4. Fine-Tuning Compass on Your Own Data
 
-If you have in-house data and would like to fine-tune a Compass model, you can use any Compass model for fine-tuning. You can either load the pre-trained Compass model or a publicly available fine-tuned Compass model.
+If you have in-house data and would like to fine-tune a Compass model with your own data, you can use any Compass model for fine-tuning. You can either load the pre-trained Compass model or a publicly available fine-tuned Compass model.
 
-**Important Note:** If you choose a fine-tuned model for further fine-tune (multi-stage FT), ensure that the `load_decoder` parameter in `ft_args` is set to `True`:
+**Important Note:** If you choose a fine-tuned model for further fine-tuning (multi-stage FT), ensure that the `load_decoder` parameter in `ft_args` is set to `True`:
 ```python
 ft_args = {'load_decoder': True}
 ```
-Choose one of: `FFT`, `PFT`, or `LFT` mode for fine-tuning, use `LFT` if your dataset is small (e.g., n < 50).
+Select one of the fine-tuning modes: 'FFT', 'PFT', or 'LFT'. For small datasets (n<50), 'LFT' is recommended. 
 
 ### Example Fine-Tuning Process
 ```python
@@ -105,12 +105,12 @@ This process fine-tunes the Compass model on your data and saves the updated mod
 ## 5. Pre-training Compass from Scratch
 ```python
 # Load the example dataset for pretraining
-# We provide sample datasets contain gene expression data for training and testing
+# We provide sample datasets that include gene expression data for training and testing
 # Ensure the data is preprocessed appropriately before use
 tcga_train_sample = pd.read_csv('./data/tcga_example_train.tsv', sep='\t', index_col=0)
 tcga_test_sample = pd.read_csv('./data/tcga_example_test.tsv', sep='\t', index_col=0)
 
-# Define pretraining hyperparameters
+# Define pre-training hyperparameters
 pt_args = {'lr': 1e-3, 'batch_size': 96, 'epochs': 20, 'seed':42}
 pretrainer = PreTrainer(**pt_args)
 
@@ -127,7 +127,7 @@ pretrainer.save('./model/my_pretrainer.pt')
 
 
 ## 6. Baseline Methods Usage Examples
-
+You can also extract features using baseline immune score methods. These features can be used to build models for response prediction.
 ```python
 # Import baseline immune score methods
 from baseline.immune_score import immune_score_methods
