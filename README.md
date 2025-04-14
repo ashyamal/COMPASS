@@ -16,7 +16,7 @@ An `example2run.ipynb` under the example folder is provided to run below experim
 #### Installation
 Clone the repository and install the required dependencies:
 ```bash
-git clone https://github.com/mims-harvard/Immune-compass.git
+git clone https://github.com/mims-harvard/COMPASS.git
 cd Immune-compass
 pip install -r requirements.txt
 ```
@@ -25,7 +25,7 @@ pip install -r requirements.txt
 Before importing compass, add it to your Python path:
 ```python
 import sys
-sys.path.insert(0, 'your_path/Immune-compass')
+sys.path.insert(0, 'your_path/COMPASS')
 ```
 
 #### Importing Compass
