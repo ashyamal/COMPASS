@@ -173,6 +173,7 @@ We welcome contributions from the community. If you have developed a Compass mod
 If you use our resources, please cite our work as follows:
 
 Wanxiang Shen, Thinh H. Nguyen, Michelle M. Li, Yepeng Huang, Intae Moon, Nitya Nair, Daniel Marbach‡, and Marinka Zitnik‡. *Generalizable AI predicts immunotherapy outcomes across cancers and treatments* [J]. medRxiv.
+
 ---
 
 We hope this information helps you make the most of the Compass project. If you have any questions or need further assistance, please do not hesitate to contact our support [team](https://www.immuno-compass.com/about/index.html).
