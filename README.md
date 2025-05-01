@@ -1,17 +1,16 @@
-<a href="url"><img src="./misc/compass_logo.png" align="left" height="130" width="130" ></a>
+# COMPASS: Generalizable AI predicts immunotherapy outcomes across cancers and treatments
+
+[![ProjectPage](https://img.shields.io/badge/ProjectPage-COMPASS-red)](https://www.immuno-compass.com/)
+[![COMPASS Dataset & Model](https://img.shields.io/badge/Dataset&Model-Download-green)](https://www.immuno-compass.com/download/)
+[![COMPASS Personalized Response Maps](https://img.shields.io/badge/PersonalizedResponseMaps-Maps-blue)](https://www.immuno-compass.com/explore/index.html)
+[![Online COMPASS Predictor](https://img.shields.io/badge/OnlineCOMPASSPredictor-Predictor-blue)](https://www.immuno-compass.com/predict/)
+
+---
+
+An `example2run.ipynb` under the example folder is provided to run below experiments. Navigate to the example folder to run the code below:
 
 
-[![Dataset](https://img.shields.io/badge/dataset&model-donwload-green)](https://www.immuno-compass.com/download/)
-
-
-## Compass for cross-cancer AI modeling of immunotherapy response
-
------
-
-An `example2run.ipynb` under the example folder is provided to run below experiments. So please navigate to the example folder to run below code:
-
-
-## 1. Installing and Importing Compass
+## 1. Installing and Importing COMPASS
 
 #### Installation
 Clone the repository and install the required dependencies:
@@ -22,14 +21,14 @@ pip install -r requirements.txt
 ```
 
 #### Adding Compass to Your Environment
-Before importing compass, add it to your Python path:
+Before importing COMPASS, add it to your Python path:
 ```python
 import sys
 sys.path.insert(0, 'your_path/COMPASS')
 ```
 
-#### Importing Compass
-Now, you can import compass and its key components:
+#### Importing COMPASS
+Now, you can import COMPASS and its key components:
 ```python
 import compass
 from compass import PreTrainer, FineTuner, loadcompass
@@ -37,7 +36,7 @@ from compass import PreTrainer, FineTuner, loadcompass
 
 ## 2. Making Predictions with a Compass Model
 
-You can download all available Compass fine-tuned models [here](https://www.immuno-compass.com/download/) for prediction.
+You can download all available COMPASS fine-tuned models [here](https://www.immuno-compass.com/download/) for prediction.
 
 The input `df_tpm` is gene expression tabular data. Please refer [here](https://www.immuno-compass.com/help/index.html#section1) for details on generating input data. The first column represents the cancer code, while the remaining 15,672 columns correspond to genes. Each row represents one patient. An example input file can be downloaded [here](https://www.immuno-compass.com/download/other/compass_gide_tpm.tsv).
 
@@ -53,9 +52,9 @@ _, df_pred = model.predict(df_tpm, batch_size=128)
 
 
 
-## 3. Extracting Features with a Compass Model
+## 3. Extracting Features with a COMPASS Model
 
-Both pre-trained (PT) and fine-tuned (FT) Compass models can function as feature extractors. The extracted features-gene-level, geneset-level, or cell type/pathway-level-can be used for downstream taks such as building a logistic regression model for response prediction or a Cox regression model for survival prediction.
+Both pre-trained (PT) and fine-tuned (FT) COMPASS models can function as feature extractors. The extracted features-gene-level, geneset-level, or cell type/pathway-level-can be used for downstream tasks such as building a logistic regression model for response prediction or a Cox regression model for survival prediction.
 
 ```python
 # Load any Compass model of your choice
@@ -72,9 +71,9 @@ dfgs, dfct = model.project(df_tpm, batch_size=128)
 
 
 
-## 4. Fine-Tuning Compass on Your Own Data
+## 4. Fine-Tuning COMPASS on Your Own Data
 
-If you have in-house data and would like to fine-tune a Compass model with your own data, you can use any Compass model for fine-tuning. You can either load the pre-trained Compass model or a publicly available fine-tuned Compass model.
+If you have in-house data and would like to fine-tune a COMPASS model with your own data, you can use any COMPASS model for fine-tuning. You can either load the pre-trained COMPASS model or a publicly available fine-tuned COMPASS model.
 
 **Important Note:** If you choose a fine-tuned model for further fine-tuning (multi-stage FT), ensure that the `load_decoder` parameter in `ft_args` is set to `True`:
 ```python
@@ -97,12 +96,12 @@ dfy = pd.get_dummies(df_cln.response_label)
 finetuner.tune(df_tpm, dfy)
 finetuner.save('./model/my_finetuner.pt')
 ```
-This process fine-tunes the Compass model on your data and saves the updated model for future use.
+This process fine-tunes the COMPASS model on your data and saves the updated model for future use.
 
 
 
 
-## 5. Pre-training Compass from Scratch
+## 5. Pre-training COMPASS from Scratch
 ```python
 # Load the example dataset for pretraining
 # We provide sample datasets that include gene expression data for training and testing
@@ -149,24 +148,24 @@ pd.concat(res, axis=1).head()
 
 ## 7. Additional Information
 
-This section provides detailed information to help you get started with the Compass project. We explain how to generate the necessary inputs from raw FASTQ data and introduce our online web server that supports both prediction and feature extraction using our pre-trained Compass models.
+This section provides detailed information to help you get started with the COMPASS project. We explain how to generate the necessary inputs from raw FASTQ data and introduce our online web server that supports both prediction and feature extraction using our pre-trained COMPASS models.
 
-### Generating Compass Inputs from Raw FASTQ Data
+### Generating COMPASS Inputs from Raw FASTQ Data
 
-Generating high-quality inputs is crucial for the optimal performance of the Compass models. Our comprehensive [Compass Data Pre-Processing Guide](https://www.immuno-compass.com/help/index.html) walks you through the entire workflow, ensuring that your raw FASTQ data is processed into a robust format ready for accurate predictions and feature extraction.
+Generating high-quality inputs is crucial for the optimal performance of the COMPASS models. Our comprehensive [Compass Data Pre-Processing Guide](https://www.immuno-compass.com/help/index.html) walks you through the entire workflow, ensuring that your raw FASTQ data is processed into a robust format ready for accurate predictions and feature extraction.
 
 ### Online Web Server for Prediction and Feature Extraction
 
-To simplify the use of our models, we offer an online web server that enables you to interact directly with the Compass models without local installations. The web server provides two primary functionalities:
+To simplify the use of our models, we offer an online web server that enables you to interact directly with the COMPASS models without local installations. The web server provides two primary functionalities:
 
 - **Prediction:** Submit your processed data to generate model predictions using our [online prediction tool](https://www.immuno-compass.com/predict).
 - **Feature Extraction:** Extract key data attributes with our [feature extraction tool](https://www.immuno-compass.com/extract).
 
-These user-friendly services are designed to streamline your workflow and integrate Compass seamlessly into your analytical processes.
+These user-friendly services are designed to streamline your workflow and integrate COMPASS into your analytical processes.
 
-### Contributing Your Own Compass Models
+### Contributing Your Own COMPASS Models
 
-We welcome contributions from the community. If you have developed a Compass model that can enhance our project, we encourage you to share it. By contributing your model, you help enrich the Compass ecosystem and promote collaborative innovation. For details on how to submit your model, please refer to our contribution guidelines. You can also [join our Slack channel](https://join.slack.com/t/immuno-compass/shared_invite/zt-2znjho738-YZOfLEGLNEH5eH_0W1TmQg) to discuss and collaborate with other users.
+We welcome contributions from the community. If you have developed a COMPASS model that can enhance our project, we encourage you to share it. By contributing your model, you help enrich the COMPASS ecosystem and promote collaborative innovation. For details on how to submit your model, please refer to our contribution guidelines. You can also [join our Slack channel](https://join.slack.com/t/immuno-compass/shared_invite/zt-2znjho738-YZOfLEGLNEH5eH_0W1TmQg) to discuss and collaborate with other users.
 
 ### Citing Our Work
 
@@ -176,4 +175,4 @@ Wanxiang Shen, Thinh H. Nguyen, Michelle M. Li, Yepeng Huang, Intae Moon, Nitya 
 
 ---
 
-We hope this information helps you make the most of the Compass project. If you have any questions or need further assistance, please do not hesitate to contact our support [team](https://www.immuno-compass.com/about/index.html).
+We hope this information helps you make the most of the COMPASS project. If you have any questions or need further assistance, please do not hesitate to contact our support [team](https://www.immuno-compass.com/about/index.html).
