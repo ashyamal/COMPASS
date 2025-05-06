@@ -1,5 +1,6 @@
 # COMPASS: Generalizable AI predicts immunotherapy outcomes across cancers and treatments
 
+[![COMPASS Paper](https://img.shields.io/badge/Paper-COMPASS-yellow)](https://www.medrxiv.org/content/10.1101/2025.05.01.25326820v1)
 [![ProjectPage](https://img.shields.io/badge/ProjectPage-COMPASS-red)](https://www.immuno-compass.com/)
 [![COMPASS Dataset & Model](https://img.shields.io/badge/Dataset&Model-Download-green)](https://www.immuno-compass.com/download/)
 [![COMPASS Personalized Response Maps](https://img.shields.io/badge/PersonalizedResponseMaps-Maps-blue)](https://www.immuno-compass.com/explore/index.html)
@@ -171,7 +172,7 @@ We welcome contributions from the community. If you have developed a COMPASS mod
 
 If you use our resources, please cite our work as follows:
 
-Wanxiang Shen, Thinh H. Nguyen, Michelle M. Li, Yepeng Huang, Intae Moon, Nitya Nair, Daniel Marbach‡, and Marinka Zitnik‡. *Generalizable AI predicts immunotherapy outcomes across cancers and treatments* [J]. medRxiv.
+Wanxiang Shen, Thinh H. Nguyen, Michelle M. Li, Yepeng Huang, Intae Moon, Nitya Nair, Daniel Marbach‡, and Marinka Zitnik‡. *Generalizable AI predicts immunotherapy outcomes across cancers and treatments* [J]. [medRxiv](https://www.medrxiv.org/content/10.1101/2025.05.01.25326820).
 
 ---
 
