@@ -179,6 +179,7 @@ def Evaluator(test_loader, model, device):
         anchor_y_true = anchor_y_true.to(device)
         
         (anchor_emb, anchor_refg), anchor_y_pred = model(anchor)
+        anchor_y_pred = torch.nn.functional.softmax(anchor_y_pred, dim=1) 
         
         y_trues.append(anchor_y_true)
         y_preds.append(anchor_y_pred)
@@ -209,6 +210,7 @@ def Predictor(dfcx, model, scaler, device = 'cpu', batch_size=512,  num_workers=
     for anchor in tqdm(predict_loader, ascii=True):
         anchor = anchor.to(device)
         (anchor_emb, anchor_refg), anchor_ys = model(anchor)
+        anchor_ys = torch.nn.functional.softmax(anchor_ys, dim=1) 
         embds.append(anchor_emb)
         ys.append(anchor_ys)
 

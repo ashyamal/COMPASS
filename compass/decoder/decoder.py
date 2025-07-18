@@ -56,7 +56,7 @@ class ClassDecoder(nn.Module):
         # Output layer
         last_hidden = _dense_layers[-1]
         self.out = Linear(last_hidden, out_dim)
-        self.softmax = nn.Softmax(dim=1)
+        #self.softmax = nn.Softmax(dim=1)
         self.log_temperature = nn.Parameter(torch.log(torch.tensor(1.0)))
 
     def forward(self, x):
@@ -71,8 +71,8 @@ class ClassDecoder(nn.Module):
 
         ## dynamic temperature
         temperature = torch.exp(self.log_temperature)
-        y = self.softmax(self.out(x) / temperature)
-        
+        y = self.out(x) / temperature
+        #y = self.softmax(self.out(x) / temperature)
         #y = F.log_softmax(self.out(x), dim=1)
         return y
         

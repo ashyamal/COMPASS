@@ -87,8 +87,8 @@ def PT_Trainer(train_loader, model,
         total_ssl_loss.append(lss.item())
         total_tsk_loss.append(tsk.item())
         
-        torch.cuda.empty_cache()  # 清理未使用的 CUDA 缓存
-        gc.collect()  # Python 垃圾回收
+        torch.cuda.empty_cache()  
+        gc.collect()  
     
         
     train_total_loss = np.mean(total_loss)

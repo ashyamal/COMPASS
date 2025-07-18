@@ -5,6 +5,8 @@
 [![COMPASS Dataset & Model](https://img.shields.io/badge/Dataset&Model-Download-green)](https://www.immuno-compass.com/download/)
 [![COMPASS Personalized Response Maps](https://img.shields.io/badge/PersonalizedResponseMaps-Maps-blue)](https://www.immuno-compass.com/explore/index.html)
 [![Online COMPASS Predictor](https://img.shields.io/badge/OnlineCOMPASSPredictor-Predictor-blue)](https://www.immuno-compass.com/predict/)
+[![PyPI version](https://badge.fury.io/py/compass.svg)](https://badge.fury.io/py/immuno-compass)
+
 
 ---
 
@@ -14,19 +16,10 @@ An `example2run.ipynb` under the example folder is provided to run below experim
 ## 1. Installing and Importing COMPASS
 
 #### Installation
-Clone the repository and install the required dependencies:
 ```bash
-git clone https://github.com/mims-harvard/COMPASS.git
-cd Immune-compass
-pip install -r requirements.txt
+pip install immuno-compass
 ```
 
-#### Adding Compass to Your Environment
-Before importing COMPASS, add it to your Python path:
-```python
-import sys
-sys.path.insert(0, 'your_path/COMPASS')
-```
 
 #### Importing COMPASS
 Now, you can import COMPASS and its key components:

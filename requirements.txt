@@ -12,3 +12,5 @@ comut
 gseapy ##ssGSEA
 tidepy # TIDE score
 colorcet
+gdown
+qnorm
