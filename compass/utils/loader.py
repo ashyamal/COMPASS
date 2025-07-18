@@ -4,6 +4,7 @@ import tempfile
 import gdown
 from tqdm import tqdm
 
+
 def download_with_progress(url, output_path):
     """
     Download a file from a URL with a progress bar using gdown.
@@ -15,6 +16,7 @@ def download_with_progress(url, output_path):
     print(f"Downloading model from {url}...")
     gdown.download(url, output_path, quiet=False)
     print(f"Model downloaded to: {output_path}")
+
 
 def loadcompass(file, **kwargs):
     """
@@ -38,12 +40,12 @@ def loadcompass(file, **kwargs):
     model = torch.load(file, **kwargs)
 
     # Clean up wandb settings if present
-    if hasattr(model, 'with_wandb') and model.with_wandb:
-        model.wandb._settings = ''
+    if hasattr(model, "with_wandb") and model.with_wandb:
+        model.wandb._settings = ""
 
     # Update device if map_location is 'cpu'
-    if kwargs.get('map_location') == 'cpu':
-        model.device = 'cpu'
+    if kwargs.get("map_location") == "cpu":
+        model.device = "cpu"
 
     # Remove temporary file if downloaded
     if file.startswith(tempfile.gettempdir()):

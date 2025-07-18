@@ -44,8 +44,14 @@ class MixupNormalAugmentor:
 class RandomMaskAugmentor:
     """Random Mask Augmentation for Gene Expression Vectors."""
 
-    def __init__(self, mask_p_prob=0.1, mask_a_prob=None, mask_n_prob=None,
-                 no_augment_prob=0.1, n_views=1):
+    def __init__(
+        self,
+        mask_p_prob=0.1,
+        mask_a_prob=None,
+        mask_n_prob=None,
+        no_augment_prob=0.1,
+        n_views=1,
+    ):
         if mask_a_prob is None:
             mask_a_prob = mask_p_prob
         if mask_n_prob is None:
@@ -69,7 +75,7 @@ class RandomMaskAugmentor:
         return x_new
 
     def _augment(self, x, mask_prob):
-        assert len(x.shape) == 1, 'augment for each sample on a vector!'
+        assert len(x.shape) == 1, "augment for each sample on a vector!"
         return [self._transform(x, mask_prob) for _ in range(self.n_views)]
 
     def augment_p(self, p):
@@ -82,16 +88,24 @@ class RandomMaskAugmentor:
         return self._augment(n, self.mask_n_prob)
 
     def __repr__(self):
-        return (f'{self.__class__.__name__}(mask_probability=(a:{self.mask_a_prob}, '
-                f'p:{self.mask_p_prob}, n:{self.mask_n_prob}), '
-                f'no={self.no_augment_prob}, n_views={self.n_views})')
+        return (
+            f"{self.__class__.__name__}(mask_probability=(a:{self.mask_a_prob}, "
+            f"p:{self.mask_p_prob}, n:{self.mask_n_prob}), "
+            f"no={self.no_augment_prob}, n_views={self.n_views})"
+        )
 
 
 class FeatureJitterAugmentor:
     """Feature Jittering for Gene Expression Vectors."""
 
-    def __init__(self, jitter_p_std=0.1, jitter_a_std=None, jitter_n_std=None,
-                 no_augment_prob=0.1, n_views=1):
+    def __init__(
+        self,
+        jitter_p_std=0.1,
+        jitter_a_std=None,
+        jitter_n_std=None,
+        no_augment_prob=0.1,
+        n_views=1,
+    ):
         if jitter_a_std is None:
             jitter_a_std = jitter_p_std
         if jitter_n_std is None:
@@ -107,13 +121,15 @@ class FeatureJitterAugmentor:
         if torch.rand(1) < self.no_augment_prob:
             return x.clone()
 
-        jitter = torch.normal(mean=0, std=jitter_std, size=x[1:].size(), device=x.device)
+        jitter = torch.normal(
+            mean=0, std=jitter_std, size=x[1:].size(), device=x.device
+        )
         x_jittered = x.clone()
         x_jittered[1:] += jitter
         return x_jittered
 
     def _augment(self, x, jitter_std):
-        assert len(x.shape) == 1, 'augment for each sample on a vector!'
+        assert len(x.shape) == 1, "augment for each sample on a vector!"
         return [self._transform(x, jitter_std) for _ in range(self.n_views)]
 
     def augment_p(self, p):
@@ -126,17 +142,27 @@ class FeatureJitterAugmentor:
         return self._augment(n, self.jitter_n_std)
 
     def __repr__(self):
-        return (f'{self.__class__.__name__}(jitter_std=(a:{self.jitter_a_std}, '
-                f'p:{self.jitter_p_std}, n:{self.jitter_n_std}, '
-                f'no:{self.no_augment_prob}), n_views={self.n_views})')
+        return (
+            f"{self.__class__.__name__}(jitter_std=(a:{self.jitter_a_std}, "
+            f"p:{self.jitter_p_std}, n:{self.jitter_n_std}, "
+            f"no:{self.no_augment_prob}), n_views={self.n_views})"
+        )
 
 
 class MaskJitterAugmentor:
     """Mixed augmentation (Masking and Jittering)."""
 
-    def __init__(self, mask_p_prob=0.01, mask_a_prob=None, mask_n_prob=0.0,
-                 jitter_p_std=0.01, jitter_a_std=None, jitter_n_std=0.0,
-                 no_augment_prob=0.1, n_views=1):
+    def __init__(
+        self,
+        mask_p_prob=0.01,
+        mask_a_prob=None,
+        mask_n_prob=0.0,
+        jitter_p_std=0.01,
+        jitter_a_std=None,
+        jitter_n_std=0.0,
+        no_augment_prob=0.1,
+        n_views=1,
+    ):
         self.mask_p_prob = mask_p_prob
         self.mask_a_prob = mask_a_prob
         self.mask_n_prob = mask_n_prob
@@ -146,10 +172,12 @@ class MaskJitterAugmentor:
         self.no_augment_prob = no_augment_prob
         self.n_views = n_views
 
-        self.augmentor1 = RandomMaskAugmentor(mask_p_prob, mask_a_prob, mask_n_prob,
-                                              no_augment_prob, n_views)
-        self.augmentor2 = FeatureJitterAugmentor(jitter_p_std, jitter_a_std, jitter_n_std,
-                                                 no_augment_prob, n_views)
+        self.augmentor1 = RandomMaskAugmentor(
+            mask_p_prob, mask_a_prob, mask_n_prob, no_augment_prob, n_views
+        )
+        self.augmentor2 = FeatureJitterAugmentor(
+            jitter_p_std, jitter_a_std, jitter_n_std, no_augment_prob, n_views
+        )
 
     def augment_p(self, p):
         augmentor = np.random.choice([self.augmentor1, self.augmentor2])

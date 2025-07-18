@@ -3,7 +3,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-
 class PoolingAggregator(nn.Module):
     def __init__(self, agg_indices_series, pooling_type="mean"):
         """
@@ -16,13 +15,12 @@ class PoolingAggregator(nn.Module):
         self.agg_indices = agg_indices_series.tolist()
         self.pooling_type = pooling_type
 
-    
     def forward(self, gene_set_features):
         """
         Forward pass of the module.
         :param gene_set_features: A tensor of shape (batch_size, num_gene_sets).
         :return: A tensor of shape (batch_size, num_agg_features).
-        
+
         """
         device = gene_set_features.device
         batch_size = gene_set_features.size(0)
@@ -31,9 +29,13 @@ class PoolingAggregator(nn.Module):
 
         for i, indices in enumerate(self.agg_indices):
             if self.pooling_type == "mean":
-                aggregated_features[:, i] = torch.mean(gene_set_features[:, indices], dim=1)
+                aggregated_features[:, i] = torch.mean(
+                    gene_set_features[:, indices], dim=1
+                )
             elif self.pooling_type == "max":
-                aggregated_features[:, i] = torch.max(gene_set_features[:, indices], dim=1)[0]
+                aggregated_features[:, i] = torch.max(
+                    gene_set_features[:, indices], dim=1
+                )[0]
 
         return aggregated_features
 
@@ -48,15 +50,16 @@ class AttentionAggregator(nn.Module):
         super(AttentionAggregator, self).__init__()
 
         self.agg_indices_series = agg_indices_series
-        self.agg_indices = agg_indices_series.tolist() 
+        self.agg_indices = agg_indices_series.tolist()
 
         # Attention weights for each cell type/pathway in each cellpathway set
-        self.attention_weights = nn.ParameterDict({
-            f"{name}": nn.Parameter(torch.randn(len(getset_idx), 1))
-            for name, getset_idx in agg_indices_series.items()
-        })
+        self.attention_weights = nn.ParameterDict(
+            {
+                f"{name}": nn.Parameter(torch.randn(len(getset_idx), 1))
+                for name, getset_idx in agg_indices_series.items()
+            }
+        )
 
-    
     def forward(self, gene_set_features):
         """
         Forward pass of the module. Aggregates cell type/pathway level features to cellpathway set level features using attention mechanism.
@@ -65,9 +68,9 @@ class AttentionAggregator(nn.Module):
         """
         batch_size = gene_set_features.size(0)
         num_agg_features = len(self.agg_indices)
-        aggregated_features = torch.zeros(batch_size, 
-                                          num_agg_features, 
-                                          device=gene_set_features.device)
+        aggregated_features = torch.zeros(
+            batch_size, num_agg_features, device=gene_set_features.device
+        )
         i = 0
         for name, getset_idx in self.agg_indices_series.items():
             set_features = gene_set_features[:, getset_idx]
@@ -75,7 +78,5 @@ class AttentionAggregator(nn.Module):
             weighted_features = set_features * attention_scores.T
             aggregated_features[:, i] = torch.sum(weighted_features, dim=1)
             i += 1
-            
+
         return aggregated_features
-
-

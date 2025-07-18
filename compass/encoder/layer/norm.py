@@ -2,6 +2,7 @@ import torch.nn as nn
 import torch
 import random
 
+
 class RMSNorm(nn.Module):
     def __init__(self, dim: int, eps: float = 1e-6):
         super().__init__()
@@ -15,19 +16,29 @@ class RMSNorm(nn.Module):
         output = self._norm(x.float()).type_as(x)
         return output * self.weight
 
+
 class DSBNNorm(nn.Module):
-    def __init__(self, dim: int, domain_num: int, domain_label: str = 'dataset', eps: float = 1e-6, flip_rate=0.3):
+    def __init__(
+        self,
+        dim: int,
+        domain_num: int,
+        domain_label: str = "dataset",
+        eps: float = 1e-6,
+        flip_rate=0.3,
+    ):
         super().__init__()
         self.eps = eps
         self.domain_label = domain_label
-        self.bns = nn.ModuleList([nn.BatchNorm1d(dim) for _ in range(domain_num+1)])
+        self.bns = nn.ModuleList([nn.BatchNorm1d(dim) for _ in range(domain_num + 1)])
         self.flip_rate = flip_rate
 
     def forward(self, xdict):
-        h = xdict['h']
-        if self.training and random.random()<self.flip_rate:
+        h = xdict["h"]
+        if self.training and random.random() < self.flip_rate:
             for i in xdict[self.domain_label].unique():
-                h[xdict[self.domain_label]==i] = self.bns[i.item()+1](h[xdict[self.domain_label]==i])
+                h[xdict[self.domain_label] == i] = self.bns[i.item() + 1](
+                    h[xdict[self.domain_label] == i]
+                )
         else:
             h = self.bns[0](h)
         return h
@@ -39,6 +50,7 @@ class DSBNNorm(nn.Module):
     def reset_parameters(self):
         for bn in self.bns:
             bn.reset_parameters()
+
 
 def create_activation(name):
     if name == "relu":
@@ -64,8 +76,8 @@ def create_norm(name, n, h=4):
         return nn.GroupNorm(h, n)
     elif name == "instancenorm":
         return nn.instancenorm1d(n)
-    elif name == 'rmsnorm':
+    elif name == "rmsnorm":
         return RMSNorm(n)
     else:
-        #print('Encoder without norm!')
+        # print('Encoder without norm!')
         return nn.Identity()

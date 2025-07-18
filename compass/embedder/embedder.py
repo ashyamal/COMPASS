@@ -18,16 +18,16 @@ cwd = os.path.dirname(__file__)
 
 class _GeneInitialization(enum.Enum):
 
-    UNIFORM = 'uniform'
-    NORMAL = 'normal'
+    UNIFORM = "uniform"
+    NORMAL = "normal"
 
     @classmethod
-    def from_str(cls, initialization: str) -> '_GeneInitialization':
+    def from_str(cls, initialization: str) -> "_GeneInitialization":
         try:
             return cls(initialization)
         except ValueError:
             valid_values = [x.value for x in _GeneInitialization]
-            raise ValueError(f'initialization must be one of {valid_values}')
+            raise ValueError(f"initialization must be one of {valid_values}")
 
     def apply(self, x: Tensor, d: int) -> None:
         d_sqrt_inv = 1 / math.sqrt(d)
@@ -35,10 +35,8 @@ class _GeneInitialization(enum.Enum):
             nn.init.uniform_(x, a=-d_sqrt_inv, b=d_sqrt_inv)
         elif self == _GeneInitialization.NORMAL:
             nn.init.normal_(x, std=d_sqrt_inv)
-            
-            
-            
-            
+
+
 class _GeneExpressionEmbedding(nn.Module):
     """Embeds the gene expression data.
 
@@ -69,9 +67,9 @@ class _GeneExpressionEmbedding(nn.Module):
                 :code:`['uniform', 'normal']`.
 
         References:
-            * 
+            *
             https://yura52.github.io/rtdl/stable/_modules/rtdl/modules.html#NumericalFeatureTokenizer
-            
+
         """
         super().__init__()
         initialization_ = _GeneInitialization.from_str(initialization)
@@ -100,79 +98,78 @@ class _GeneExpressionEmbedding(nn.Module):
 
 class AbundanceEmbedding(nn.Module):
     def __init__(self, n_genes: int, embed_dim: int, learnable_pe=True) -> None:
-        '''
+        """
         n_genes:  Number of genes
         embed_dim: gene embedding size
         learnable_pe: {True, False}
-        '''
+        """
         super().__init__()
-        gee_layer = _GeneExpressionEmbedding(n_genes, embed_dim, learnable_pe, 'uniform')
+        gee_layer = _GeneExpressionEmbedding(
+            n_genes, embed_dim, learnable_pe, "uniform"
+        )
         layers = [gee_layer, nn.ReLU()]
-        #layers = [gee_layer]
+        # layers = [gee_layer]
         self.layers = nn.Sequential(*layers)
 
     def forward(self, x):
         return self.layers(x)
 
 
-
 class PositionalEncoding(nn.Module):
-    def __init__(self, input_dim = 876, dim = 32, type = 'gene2vect'):
-        '''
+    def __init__(self, input_dim=876, dim=32, type="gene2vect"):
+        """
         type:{'gene2vect', 'umap', 'pumap'}
-        '''
+        """
         super().__init__()
-        pefile = os.path.join(cwd, 'pe/%s_%s_%s.pt' % (type, input_dim, dim))
-        pe = torch.load(pefile) #876,32
-        pe = pe.unsqueeze(0) #1,876,32
-        self.register_buffer('pe', pe)
-    
+        pefile = os.path.join(cwd, "pe/%s_%s_%s.pt" % (type, input_dim, dim))
+        pe = torch.load(pefile)  # 876,32
+        pe = pe.unsqueeze(0)  # 1,876,32
+        self.register_buffer("pe", pe)
+
     def forward(self, x):
-        pe = self.pe[:, : x.size(1)].requires_grad_(False) 
+        pe = self.pe[:, : x.size(1)].requires_grad_(False)
         return pe
 
 
-
 class GeneEmbedding(nn.Module):
-    def __init__(self, input_dim = 876, d_model = 32, pos_emb = None):
-        '''
+    def __init__(self, input_dim=876, d_model=32, pos_emb=None):
+        """
         pos_emb: {None, 'learnable', 'gene2vect', 'umap'}
-        '''
+        """
         super(GeneEmbedding, self).__init__()
 
         self.input_dim = input_dim
         self.pos_emb = pos_emb
         self.d_model = d_model
-        
-        if pos_emb == 'learnable':
-            self.abundance_embedder = AbundanceEmbedding(input_dim, 
-                                                          d_model, 
-                                                          learnable_pe = True)
+
+        if pos_emb == "learnable":
+            self.abundance_embedder = AbundanceEmbedding(
+                input_dim, d_model, learnable_pe=True
+            )
             self.positional_encoder = torch.zeros_like
         else:
-            self.abundance_embedder = AbundanceEmbedding(input_dim, 
-                                                          d_model, 
-                                                          learnable_pe = False)
+            self.abundance_embedder = AbundanceEmbedding(
+                input_dim, d_model, learnable_pe=False
+            )
             if pos_emb is None:
                 self.positional_encoder = torch.zeros_like
             else:
-                self.positional_encoder = PositionalEncoding(input_dim, 
-                                                             d_model, 
-                                                             pos_emb)
+                self.positional_encoder = PositionalEncoding(
+                    input_dim, d_model, pos_emb
+                )
 
     def forward(self, x):
         """
         Args:
           x: embeddings (batch_size, seq_length)
-        
+
         Returns:
             gene value embeddings (batch_size, seq_length, d_model) + gene positional embedding (batch_size, seq_length, d_model)
         """
-        if (self.pos_emb is None) | (self.pos_emb == 'learnable'):
+        if (self.pos_emb is None) | (self.pos_emb == "learnable"):
             x = self.abundance_embedder(x)
         else:
-            x = self.abundance_embedder(x) #blc
-            pe = self.positional_encoder(x) #blc
+            x = self.abundance_embedder(x)  # blc
+            pe = self.positional_encoder(x)  # blc
             x = x + pe
         return x
-        
