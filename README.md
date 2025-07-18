@@ -17,17 +17,40 @@ An `example2run.ipynb` under the example folder is provided to run below experim
 ## 1. Installing and Importing COMPASS
 
 #### Installation
+
 ```bash
+conda create -n compass python=3.8
+conda activate compass
 pip install immuno-compass
 ```
 
+> **⚡ GPU (CUDA) Support:**
+> By default, `pip install immuno-compass` will install the CPU-only version of PyTorch.
+> If you want GPU acceleration, **please manually install the CUDA-enabled version of torch** *before* installing other dependencies. For example, for CUDA 11.7:
+>
+> ```bash
+> pip install torch==1.13.1+cu117 torchvision==0.14.1+cu117 torchaudio==0.13.1 --index-url https://download.pytorch.org/whl/cu117
+> ```
+>
+> For other CUDA versions, see the [PyTorch official installation guide](https://pytorch.org/get-started/locally/).
+>
+> If you use `conda`, you can install GPU-enabled torch with:
+>
+> ```bash
+> conda install pytorch torchvision torchaudio pytorch-cuda=11.7 -c pytorch -c nvidia
+> ```
 
 #### Importing COMPASS
+
 Now, you can import COMPASS and its key components:
+
 ```python
 import compass
 from compass import PreTrainer, FineTuner, loadcompass
 ```
+
+
+
 
 ## 2. Making Predictions with a Compass Model
 
