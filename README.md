@@ -5,7 +5,8 @@
 [![COMPASS Dataset & Model](https://img.shields.io/badge/Dataset&Model-Download-green)](https://www.immuno-compass.com/download/)
 [![COMPASS Personalized Response Maps](https://img.shields.io/badge/PersonalizedResponseMaps-Maps-blue)](https://www.immuno-compass.com/explore/index.html)
 [![Online COMPASS Predictor](https://img.shields.io/badge/OnlineCOMPASSPredictor-Predictor-blue)](https://www.immuno-compass.com/predict/)
-[![PyPI version](https://badge.fury.io/py/compass.svg)](https://badge.fury.io/py/immuno-compass)
+[![PyPI version](https://badge.fury.io/py/immuno-compass.svg)](https://badge.fury.io/py/immuno-compass)
+[![Downloads](https://static.pepy.tech/badge/immuno-compass)](https://pepy.tech/project/immuno-compass)
 
 
 ---
