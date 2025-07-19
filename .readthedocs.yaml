@@ -10,10 +10,10 @@ build:
 python:
   install:
     - requirements: docs/requirements.txt
-  system_packages: false
   extra_requirements:
     - docs
 
 sphinx:
   configuration: docs/source/conf.py
+
 
