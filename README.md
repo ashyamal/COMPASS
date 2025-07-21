@@ -147,6 +147,8 @@ pretrainer.save('./model/my_pretrainer.pt')
 You can also extract features using baseline immune score methods. These features can be used to build models for response prediction.
 ```python
 # Import baseline immune score methods
+import sys
+sys.path.insert(0, '../')
 from baseline.immune_score import immune_score_methods
 
 # Extract features using baseline methods
