@@ -1,14 +1,14 @@
 # COMPASS: Generalizable AI predicts immunotherapy outcomes across cancers and treatments
 
+[![Documentation Status](https://readthedocs.org/projects/immuno-compass/badge/?version=latest&style=flat-square)](https://immuno-compass.readthedocs.io/en/latest/)
+[![PyPI version](https://badge.fury.io/py/immuno-compass.svg)](https://badge.fury.io/py/immuno-compass)
+[![Downloads](https://static.pepy.tech/badge/immuno-compass)](https://pepy.tech/project/immuno-compass)
+---
 [![COMPASS Paper](https://img.shields.io/badge/Paper-COMPASS-yellow)](https://www.medrxiv.org/content/10.1101/2025.05.01.25326820v1)
 [![ProjectPage](https://img.shields.io/badge/ProjectPage-COMPASS-red)](https://www.immuno-compass.com/)
 [![COMPASS Dataset & Model](https://img.shields.io/badge/Dataset&Model-Download-green)](https://www.immuno-compass.com/download/)
 [![COMPASS Personalized Response Maps](https://img.shields.io/badge/PersonalizedResponseMaps-Maps-blue)](https://www.immuno-compass.com/explore/index.html)
 [![Online COMPASS Predictor](https://img.shields.io/badge/OnlineCOMPASSPredictor-Predictor-blue)](https://www.immuno-compass.com/predict/)
-[![Documentation Status](https://readthedocs.org/projects/immuno-compass/badge/?version=latest&style=flat-square)](https://immuno-compass.readthedocs.io/en/latest/)
-[![PyPI version](https://badge.fury.io/py/immuno-compass.svg)](https://badge.fury.io/py/immuno-compass)
-[![Downloads](https://static.pepy.tech/badge/immuno-compass)](https://pepy.tech/project/immuno-compass)
-
 
 ---
 
