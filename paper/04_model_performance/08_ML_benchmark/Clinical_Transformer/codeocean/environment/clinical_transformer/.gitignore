@@ -1,0 +1,7 @@
+logs
+notebooks/*
+.ipynb_checkpoints
+analysis/
+Benchmarks/
+examples/
+*.pyc
