@@ -366,6 +366,8 @@ class Trainer():
 
         self.test_size = test_size
         
+
+
         # Load the dataset
         dataset = pickle.load(open('{}/dataset.pk'.format(self.out_dir) , 'rb'))
 
@@ -399,7 +401,9 @@ class Trainer():
         
         # Define the batch size
         train_batch_size = self.batch_size
-        test_batch_size = self.batch_size
+        
+        import math
+        test_batch_size = min(self.batch_size, max(1, X_test.shape[0]))
 
         # Sometimes we have very small datsets, so, we can just do the batches to the total number of samples. 
         if self.batch_size_max:
