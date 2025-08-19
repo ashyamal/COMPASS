@@ -1,3 +1,4 @@
+
 import tensorflow as tf 
 
 def sigmoid_concordance(Target, y_pred):
@@ -63,4 +64,3 @@ def cox_concordance(Target, y_pred):
     rank_mat=rank_mat/tf.math.reduce_sum(rank_mat)
     metric=tf.math.reduce_sum(etaMat*rank_mat) #metric
     return metric
-

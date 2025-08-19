@@ -525,7 +525,12 @@ class Trainer():
             # If we used a pretrained model we need first to get the model ready and then set the weights from the 
             # pretrained model and set it to trainable as we will be modifying the weights. 
 
-            _ = model([i[:2] for i in self.dummy_data])
+            #_ = model([i[:2] for i in self.dummy_data])
+            
+            with tf.device('/CPU:0'):
+                zeros_cpu = [tf.zeros_like(t[:2]) for t in self.dummy_data]
+                _ = model(zeros_cpu)            
+            
             model.encoder.set_weights(self.base_model_encoder_weights) 
             model.encoder.trainable = True
         
@@ -578,8 +583,12 @@ class Trainer():
             with_prior=self.priors
         )
         
-        _=self.model(self.dummy_data)
+        #_=self.model(self.dummy_data)
         
+        with tf.device('/CPU:0'):
+            zeros_cpu = [tf.zeros(s, dtype=tf.float32) for s in self.process_data_shape]
+            _ = self.model(zeros_cpu)
+    
         if file:
             self.model.load_weights(file)
         else:
