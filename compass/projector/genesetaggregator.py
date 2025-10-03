@@ -1,7 +1,10 @@
+"""
+Level 1 attention: gene embeddings -> granular concept scores
+"""
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
 
 class GeneSetPoolingAggregator(nn.Module):
     def __init__(self, genesets_indices, pooling_type="mean"):
@@ -75,30 +78,32 @@ class GeneSetAttentionAggregator(nn.Module):
         :param gene_features: A tensor of shape (batch_size, num_genes, feature_dim), representing gene-level features.
         :return: A tensor of shape (batch_size, num_gene_sets, feature_dim), representing gene set level features.
         """
+        
+        # gene_features: [B, 15672, 32]
         batch_size = gene_features.size(0)
         gene_set_features = []
 
         for i, gene_set in enumerate(self.genesets_indices):
             set_features = gene_features[
                 :, gene_set, :
-            ]  # Extract features for genes in the set
+            ]  # Extract features for genes in the set, shape [B, k, 32]
 
             if self.softmax_mean:
                 attention = F.softmax(
                     self.attention_weights[f"geneset_{i}"].expand(batch_size, -1, -1),
                     dim=1,
-                )
-                weighted_features = set_features * attention
-                aggregated_features = torch.sum(weighted_features, dim=1)
+                ) # [B, k, 1]
+                weighted_features = set_features * attention # [B, k, 32] * [B, k, 1] -> [B, k, 32]
+                aggregated_features = torch.sum(weighted_features, dim=1) # [B, 32]
 
             else:
-                attention = self.attention_weights[f"geneset_{i}"]
-                weighted_features = set_features * attention
-                aggregated_features = torch.mean(weighted_features, dim=1)
+                attention = self.attention_weights[f"geneset_{i}"] # [k, 1]
+                weighted_features = set_features * attention # [B, k, 32] * [k, 1] -> [B, k, 32]
+                aggregated_features = torch.mean(weighted_features, dim=1) # [B, 32]
 
             gene_set_features.append(aggregated_features)
 
-        gene_set_features = torch.stack(gene_set_features, dim=1)
+        gene_set_features = torch.stack(gene_set_features, dim=1) # [B, 132, 32]
 
         return gene_set_features
 

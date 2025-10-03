@@ -131,11 +131,13 @@ class TransformerEncoder(nn.Module):
         self.dropout = dropout
         self.dim_feedforward = dim_feedforward
         self.pos_emb = pos_emb
-
+        
+        # PID token provides a global patient-level representation slot; similar to [CLS] token in BERT
         self.pid_token_embedder = nn.Parameter(torch.randn(1, d_model))
         initialization_ = _GeneInitialization.from_str("uniform")
         initialization_.apply(self.pid_token_embedder, d_model)
 
+        # Initialize cancer type embeddings
         self.cancer_token_embedder = nn.Embedding(num_cancer_types, d_model)
         self.gene_token_embedder = GeneEmbedding(input_dim, d_model, pos_emb)
 
@@ -187,3 +189,37 @@ class MLPEncoder(nn.Module):
     def forward(self, x):
         x = self.encoder(x)
         return x
+
+class IdentityEncoder(nn.Module):
+    """
+    Replace transformer with identity - embeddings pass through unchanged
+    Testing wether we need self-attention across genes
+    """
+    
+    def __init__(self, num_cancer_types=33, input_dim=15672, d_model=32, pos_emb="learnable", **kwargs):
+        super().__init__()
+        
+        # Use same embeddings as TransformerEncoder
+        self.pid_token_embedder = nn.Parameter(torch.randn(1, d_model))
+        initialization_ = _GeneInitialization.from_str("uniform")
+        initialization_.apply(self.pid_token_embedder, d_model)
+        
+        self.cancer_token_embedder = nn.Embedding(num_cancer_types, d_model)
+        self.gene_token_embedder = GeneEmbedding(input_dim, d_model, pos_emb)
+        
+    def forward(self, x, output_attentions=False):
+        cancer_types = x[:, 0].long()
+        genes = x[:, 1:]
+        
+        pid_embed = self.pid_token_embedder.expand(x.size(0), -1).unsqueeze(1)
+        cancer_embed = self.cancer_token_embedder(cancer_types).unsqueeze(1)
+        gene_embed = self.gene_token_embedder(genes)
+        
+        # Concatenate - no transformer processing
+        output = torch.cat([pid_embed, cancer_embed, gene_embed], dim=1)
+        # Shape: [B, 15674, 32]
+        
+        if output_attentions:
+            return output, None
+        else:
+            return output

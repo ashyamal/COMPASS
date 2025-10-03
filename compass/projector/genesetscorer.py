@@ -1,3 +1,8 @@
+"""
+Projects the 32-dimensional aggregated gene set features to scalar scores
+Use a shared linear layer for all 132 gene sets
+"""
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -57,15 +62,15 @@ class GeneSetScoreLinear(nn.Module):
         :param x: A tensor of shape (batch_size, num_gene_sets, feature_dim).
         :return: A tensor of shape (batch_size, num_gene_sets).
         """
+        # x: [B, 132, 32]
         batch_size, num_gene_sets, _ = x.shape
-        x = x.view(-1, x.size(-1))  # Flatten the last two dimensions for linear layer
-        scores = self.fc(x)
+        x = x.view(-1, x.size(-1))  # [B*132, 32] - flatten for linear layer
+        scores = self.fc(x) # [B*132, 1] - linear transformation
         # scores = F.relu(scores) # score greater than zero
         scores = scores.view(
             batch_size, num_gene_sets
-        )  # Reshape to original batch and gene set dimensions
+        )  # [B, 132] - reshape back to (batch_size, num_gene_sets)
         return scores
-
 
 class GeneSetScorer(nn.Module):
     def __init__(self, feature_dim, mode="linear", pooling_type="mean"):

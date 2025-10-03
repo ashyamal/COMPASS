@@ -95,7 +95,7 @@ class _GeneExpressionEmbedding(nn.Module):
             x = x + self.bias[None]
         return x
 
-
+# Wrap _GeneExpressionEmbedding + ReLU
 class AbundanceEmbedding(nn.Module):
     def __init__(self, n_genes: int, embed_dim: int, learnable_pe=True) -> None:
         """
@@ -114,7 +114,7 @@ class AbundanceEmbedding(nn.Module):
     def forward(self, x):
         return self.layers(x)
 
-
+# Load pre-computed positional embeddings from files
 class PositionalEncoding(nn.Module):
     def __init__(self, input_dim=876, dim=32, type="gene2vect"):
         """
@@ -127,10 +127,11 @@ class PositionalEncoding(nn.Module):
         self.register_buffer("pe", pe)
 
     def forward(self, x):
+        # Get relevant positional encodings (subsets if there are less than 15672 genes)
         pe = self.pe[:, : x.size(1)].requires_grad_(False)
         return pe
 
-
+# Combine abundance embeddings with positional encodings
 class GeneEmbedding(nn.Module):
     def __init__(self, input_dim=876, d_model=32, pos_emb=None):
         """
@@ -143,17 +144,22 @@ class GeneEmbedding(nn.Module):
         self.d_model = d_model
 
         if pos_emb == "learnable":
+            # Abundance embedder with learnable bias
             self.abundance_embedder = AbundanceEmbedding(
                 input_dim, d_model, learnable_pe=True
             )
+            # No additional positional encoding needed (bias handles it)
             self.positional_encoder = torch.zeros_like
         else:
+            # Abundance embedder without learnable bias
             self.abundance_embedder = AbundanceEmbedding(
                 input_dim, d_model, learnable_pe=False
             )
             if pos_emb is None:
+                # No positional encoding
                 self.positional_encoder = torch.zeros_like
             else:
+                # Use pre=
                 self.positional_encoder = PositionalEncoding(
                     input_dim, d_model, pos_emb
                 )

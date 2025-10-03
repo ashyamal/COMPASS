@@ -3,6 +3,8 @@
 Created on Wed Oct 11 16:44:09 2023
 
 @author: Wanxiang Shen
+
+Implements self-supervised contrastive learning using triplets.
 """
 import torch
 import torch.utils.data as Torchdata
@@ -41,6 +43,9 @@ def PT_Trainer(
     total_loss = []
     total_ssl_loss = []
     total_tsk_loss = []
+    # 2 training objectives:
+    #   1. SSL (self-supervised learning): triplet contrastive loss
+    #   2. Task loss: optional supervised loss (e.g., survival prediction on TCGA)
 
     # torch.autograd.set_detect_anomaly(True)
     # for data in tqdm(train_loader, ascii=True):
@@ -48,8 +53,13 @@ def PT_Trainer(
 
         triplet, label = data
 
+        # Unpack labels for optional supervised task
         anchor_y_true, positive_y_true, negative_y_true = label
+        
         anchor, positive, negative = triplet
+        # Anchor: [B, 15673] - original patient
+        # Positive: [B, 15673] - augmented version of anchor
+        # Negative: [B, 15673] - different patient
 
         anchor, positive, negative = (
             anchor.to(device),
@@ -65,19 +75,30 @@ def PT_Trainer(
         (anchor_emb, anchor_refg), anchor_y_pred = model(anchor)
         (positive_emb, positive_refg), positive_y_pred = model(positive)
         (negative_emb, negative_refg), negative_y_pred = model(negative)
+        # - anchor_emb: [B, 44] - high-level concept scores
+        # - anchor_refg: tuple (gene_ref, emb_ref) - reference features
+        # - anchor_y_pred: [B, 2] - prediction logits (unused if alpha=0)
 
         lss = ssl_loss(anchor_emb, positive_emb, negative_emb)
+        # Compute ssl loss (TripletMarginLoss)
 
         ## remove batch effects by minimal the differences between house-keeping genes
         if correction != 0:
+            # Extract reference embeddings
             refe = torch.cat(
                 [anchor_refg[1], positive_refg[1], negative_refg[1]], axis=0
             )
-            refy = torch.cat([anchor_y_true, positive_y_true, negative_y_true], axis=0)
+            # Extract reference labels
+            # refy = torch.cat([anchor_y_true, positive_y_true, negative_y_true], axis=0)
             # ref = cv_loss_penalty(refe)
+            
+            # Reference loss: force reference concepts to be similar across experimental batches
+            # This reduces batch effects (from the technical variation in TCGA data measurement)
             ref = msd_loss(refe)
+            
             # idp = independence_loss(refe, refy)
             # print("Lss: {:.3f} - Ref: {:.3f} - idp: {:.6f}".format(lss.item(), ref.item(), idp.item()))
+            
             lss = (1 - correction) * lss + correction * ref
         y_pred = anchor_y_pred  # torch.cat([anchor_y_pred, positive_y_pred, negative_y_pred])
         y_true = anchor_y_true  # torch.cat([anchor_y_true, positive_y_true, negative_y_true])

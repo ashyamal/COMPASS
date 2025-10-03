@@ -1,3 +1,22 @@
+"""
+Hierachical concept bottleneck overview:
+
+Transformer Output [B, 15674, 32]
+         ↓
+DisentangledProjector (projector.py)
+    ├─> GeneSetProjector
+    │   ├─> GeneSetAggregator (genesetaggregator.py)
+    │   │   └─> GeneSetAttentionAggregator
+    │   └─> GeneSetScorer (genesetscorer.py)
+    │       └─> GeneSetScoreLinear
+    ├─> Granular scores [B, 132]
+    │
+    └─> CellPathwayProjector
+        └─> CellPathwayAggregator (cellpathwayaggregator.py)
+            └─> CellPathwayAttentionAggregator
+        └─> High-level scores [B, 44]
+"""
+
 from .cellpathwayaggregator import CellPathwayAggregator
 from .genesetaggregator import GeneSetAggregator
 from .genesetscorer import GeneSetScorer
@@ -10,7 +29,6 @@ import torch.nn.functional as F
 import os
 import pandas as pd
 import numpy as np
-
 
 cwd = os.path.dirname(__file__)
 
@@ -33,9 +51,12 @@ class GeneSetProjector(nn.Module):
         self.genesets_indices = GENESET.tolist()
         self.genesets_names = GENESET.index
 
+        # Level 1 aggregation: genes -> gene set features
         self.geneset_aggregator = GeneSetAggregator(
             self.genesets_indices, self.geneset_agg_mode
         )
+        
+        # Score calculation: features -> scalars
         self.geneset_scorer = GeneSetScorer(
             self.geneset_feature_dim, self.geneset_score_mode
         )

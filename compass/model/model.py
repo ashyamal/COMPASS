@@ -5,9 +5,45 @@ Created on Fri Nov  3 13:31:25 2023
 @author: Wanxiang Shen
 
 """
+
+"""
+Model workflow:
+INPUT
+[B, 15673] raw data
+    ↓
+PARSE
+cancer_types: [B]
+genes: [B, 15672]
+    ↓
+EMBED (parallel)
+├─ PID:    [B, 1, 32]
+├─ Cancer: [B, 1, 32]
+└─ Genes:  [B, 15672, 32]
+    ↓ (inside GeneEmbedding)
+    ├─ weight * expression: [B, 15672, 32]
+    ├─ + bias (pos encoding): [B, 15672, 32]
+    └─ ReLU: [B, 15672, 32]
+    ↓
+CONCATENATE
+[B, 15674, 32] (PID + Cancer + 15672 genes)
+    ↓
+TRANSFORMER (self-attention)
+[B, 15674, 32] → [B, 15674, 32] (contextualized)
+    ↓
+PROJECTOR
+[B, 15674, 32] → [B, 132] → [B, 44]
+(genes → gene sets → concepts)
+    ↓
+DECODER
+[B, 44] → [B, 2]
+    ↓
+OUTPUT
+Logits: [B, 2]
+"""
+
 import torch
 import torch.nn as nn
-from ..encoder import TransformerEncoder, MLPEncoder
+from ..encoder import TransformerEncoder, MLPEncoder, IdentityEncoder
 from ..decoder import ClassDecoder, RegDecoder, ProtoNetDecoder
 from ..projector import DisentangledProjector, EntangledProjector
 
@@ -87,20 +123,37 @@ class Compass(nn.Module):
         self.seed = seed
 
         fixseed(seed=self.seed)
-
-        self.inputencoder = TransformerEncoder(
+        
+        if encoder == "identity":
+            # Use an identity encoder
+            # Test whether gene attention is useful
+            self.inputencoder = IdentityEncoder(
             num_cancer_types=num_cancer_types,
-            encoder_type=encoder,
             input_dim=input_dim,
             d_model=transformer_dim,
-            num_layers=transformer_num_layers,
-            nhead=transformer_nhead,
-            dropout=encoder_dropout,
             pos_emb=transformer_pos_emb,
             **encoder_kwargs
         )
+        
+        else:
+            # Gene language model: contextualize each gene using self-attention
+            self.inputencoder = TransformerEncoder(
+                num_cancer_types=num_cancer_types,
+                encoder_type=encoder,
+                input_dim=input_dim,
+                d_model=transformer_dim,
+                num_layers=transformer_num_layers,
+                nhead=transformer_nhead,
+                dropout=encoder_dropout,
+                pos_emb=transformer_pos_emb,
+                **encoder_kwargs
+            )
 
         if proj_disentangled:
+            # Implement concept bottleneck architecture:
+            # Maps gene embeddings to 132 granular concepts (gene sets)
+            # Aggregates them into 44 high-level concepts (cell types/pathways)
+            
             self.latentprojector = DisentangledProjector(
                 input_dim,
                 transformer_dim,
@@ -131,6 +184,8 @@ class Compass(nn.Module):
                 self.proj_feature_names = a
 
         else:
+            # Baseline/ablation: non-interpretable projection (no gene signatures)
+            
             self.latentprojector = EntangledProjector(transformer_dim)
             self.embed_feature_names = range(len(embed_dim))
             self.embed_dim = embed_dim
@@ -194,14 +249,19 @@ class Compass(nn.Module):
 
         # output： B,L+2, (dataset:1, cancer:1, gene),C
         encoding = self.inputencoder(x)
+        
+        # geneset_level_proj: [B, 132] (granual concepts)
+        # cellpathway_level_proj: [B, 44] (high-level concepts)
         geneset_level_proj, cellpathway_level_proj = self.latentprojector(encoding)
 
         # task_inputs: only input the context-oriented features (for downstream task)
+        # Reference refers to houskeeping genes/pathways
         # Embedding: embeddings for contrastive learning
         if self.proj_level == "geneset":
             embedding = geneset_level_proj  # B,L
             emb_ref = embedding[:, self.ref_geneset_ids]
 
+            # Create a mask to exclude reference concepts
             mask = torch.ones(embedding.shape[1], dtype=torch.bool)
             mask[self.ref_geneset_ids] = False
             emb_used = embedding[:, mask]
@@ -215,6 +275,7 @@ class Compass(nn.Module):
             emb_used = embedding[:, mask]
             # print(emb_used.shape)
 
+        # Whether to use reference genes/concepts
         if self.ref_for_task:
             y = self.taskdecoder(embedding)
         else:
@@ -223,4 +284,8 @@ class Compass(nn.Module):
         gene_encoding = encoding[:, 2:, :]
         gene_ref = gene_encoding[:, self.ref_gene_ids, :]
 
+        # embedding: [B, 44] - high-level concept scores
+        # (gene_ref, emb_ref): Tuple of reference features
+        # y: [B, 2] - prediction logits
         return (embedding, (gene_ref, emb_ref)), y
+
