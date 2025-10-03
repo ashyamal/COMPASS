@@ -13,7 +13,6 @@ import os
 from sklearn.decomposition import PCA
 
 
-
 class ssGSEA:
     
     def __init__(self, geneset, geneset_name):
@@ -63,17 +62,20 @@ class ssGSEA:
 
 class avgAbundance:
     
-    def __init__(self, geneset, geneset_name):
+    def __init__(self, geneset, geneset_name, log_transform = True):
         self.gene_sets = {geneset_name:geneset}
         self.geneset = geneset
         self.geneset_name = geneset_name
-        
+        self.log_transform = log_transform
         
     def fit(self, df_tpm):
         '''
         dfx: each column is one gene, each row is one samples
         '''
-        dfx = np.log2(df_tpm + 1)
+        if self.log_transform:
+            dfx = np.log2(df_tpm + 1)
+        else:
+            dfx = df_tpm
         self.used_cols = list(set(dfx.columns) & set(self.geneset))
         dfx_used = dfx[self.used_cols]        
         score = dfx_used.mean(axis=1)
@@ -81,7 +83,10 @@ class avgAbundance:
         return self
     
     def transform(self, df_tpm):
-        dfx = np.log2(df_tpm + 1)
+        if self.log_transform:
+            dfx = np.log2(df_tpm + 1)
+        else:
+            dfx = df_tpm
         dfx_used = dfx[self.used_cols]  
         score = dfx_used.mean(axis=1)
         score = score / self.scale_factor
@@ -97,17 +102,20 @@ class avgAbundance:
 
 class pcaAbundance:
     
-    def __init__(self, geneset, geneset_name):
+    def __init__(self, geneset, geneset_name, log_transform = True):
         self.gene_sets = {geneset_name:geneset}
         self.geneset = geneset
         self.geneset_name = geneset_name
         self.pca = PCA(n_components=1)
-        
+        self.log_transform = log_transform
     def fit(self, df_tpm):
         '''
         dfx: each column is one gene, each row is one samples
         '''
-        dfx = np.log2(df_tpm + 1)
+        if self.log_transform:
+            dfx = np.log2(df_tpm + 1)
+        else:
+            dfx = df_tpm
         self.used_cols = list(set(dfx.columns) & set(self.geneset))
         dfx_used = dfx[self.used_cols]    
 
@@ -119,7 +127,10 @@ class pcaAbundance:
     
     def transform(self, df_tpm):
         columns = ['PCA_%s' % self.geneset_name]
-        dfx = np.log2(df_tpm + 1)
+        if self.log_transform:
+            dfx = np.log2(df_tpm + 1)
+        else:
+            dfx = df_tpm
         dfx_used = dfx[self.used_cols]  
         
         if dfx_used.shape[1] == 0:
@@ -137,23 +148,29 @@ class pcaAbundance:
 
 class origAbundance:
     
-    def __init__(self, geneset, geneset_name):
+    def __init__(self, geneset, geneset_name, log_transform = True):
         self.gene_sets = {geneset_name:geneset}
         self.geneset = geneset
         self.geneset_name = geneset_name
-        
+        self.log_transform = log_transform
         
     def fit(self, df_tpm):
         '''
         dfx: each column is one gene, each row is one samples
         '''
-        dfx = np.log2(df_tpm + 1)
+        if self.log_transform:
+            dfx = np.log2(df_tpm + 1)
+        else:
+            dfx = df_tpm
         self.used_cols = list(set(dfx.columns) & set(self.geneset))
         dfx_used = dfx[self.used_cols]        
         return self
     
     def transform(self, df_tpm):
-        dfx = np.log2(df_tpm + 1)
+        if self.log_transform:
+            dfx = np.log2(df_tpm + 1)
+        else:
+            dfx = df_tpm
         dfx_used = dfx[self.used_cols]  
         dfx_used.index.name = '%s' % self.geneset_name
         return dfx_used

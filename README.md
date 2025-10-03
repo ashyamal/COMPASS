@@ -1,6 +1,6 @@
 # COMPASS: Generalizable AI predicts immunotherapy outcomes across cancers and treatments
 
-[![Documentation Status](https://readthedocs.org/projects/immuno-compass/badge/?version=latest&style=flat-square)](https://immuno-compass.readthedocs.io/en/latest/)
+<!-- [![Documentation Status](https://readthedocs.org/projects/immuno-compass/badge/?version=latest&style=flat-square)](https://immuno-compass.readthedocs.io/en/latest/) -->
 [![PyPI version](https://badge.fury.io/py/immuno-compass.svg)](https://badge.fury.io/py/immuno-compass)
 [![Downloads](https://static.pepy.tech/badge/immuno-compass)](https://pepy.tech/project/immuno-compass)
 ---
