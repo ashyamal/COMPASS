@@ -5,7 +5,6 @@ from sklearn.metrics import confusion_matrix
 from sklearn.metrics import matthews_corrcoef
 import numpy as np
 
-
 def score(y_true, y_prob, y_pred):
 
     select = ~y_true.isna()
