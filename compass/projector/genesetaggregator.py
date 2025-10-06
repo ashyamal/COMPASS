@@ -1,5 +1,5 @@
 """
-Level 1 attention: gene embeddings -> granular concept scores
+Level 1 attention: gene embeddings -> granular concept scores (132 concepts)
 """
 
 import torch
