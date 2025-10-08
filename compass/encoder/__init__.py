@@ -1,1 +1,1 @@
-from .encoder import TransformerEncoder, MLPEncoder
+from .encoder import TransformerEncoder, MLPEncoder, IdentityEncoder

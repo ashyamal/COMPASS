@@ -112,7 +112,7 @@ class PreTrainer:
         with_wandb=False,
         wandb_project="pretrain",
         wandb_dir="./wandb/",
-        wandb_entity="senwanxiang",
+        wandb_entity="ashyamal-mit",
         **encoder_kwargs,
     ):
         """
